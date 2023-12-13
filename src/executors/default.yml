@@ -1,12 +1,19 @@
 description: >
-  This is a sample executor using Docker and Node. If you want to provide a custom environment in your orb, insert your image here.
-  If you do not require an executor, you can simply delete this directory.
-docker:
-  - image: 'cimg/node:<<parameters.tag>>'
+  A Docker executor using CricleCI's Node.js images optimized for CI.
+
 parameters:
   tag:
+    type: string
     default: lts
     description: >
-      Pick a specific cimg/node image variant:
+      Choose a specific cimg/node image tag:
       https://hub.docker.com/r/cimg/node/tags
-    type: string
+  resource_class:
+    type: enum
+    enum: ['small', 'medium', 'medium+', 'large', 'xlarge', '2xlarge', '2xlarge+']
+    default: 'large'
+    description: Choose the executor resource class
+
+docker:
+  - image: cimg/node:<<parameters.tag>>
+resource_class: <<parameters.resource_class>>
