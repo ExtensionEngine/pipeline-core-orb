@@ -1,0 +1,66 @@
+description: >
+  Install dependencies with caching, optionally choose a package manager.
+  Requires execution environment with Node.js >= 16.17 pre-installed.
+
+parameters:
+  pkg_manager:
+    type: enum
+    enum: ['npm', 'pnpm']
+    default: 'npm'
+    description: Choose Node.js package manager to use.
+  pkg_json_dir:
+    type: string
+    default: '.'
+    description: >
+      Path to the directory containing package.json file.
+      Not needed when package.json is in the root.
+  cache_version:
+    type: string
+    default: 'v1'
+    description: >
+      Change the default cache version if the cache needs to be cleared for some reason.
+
+steps:
+  - run:
+      name: Ensure package manager
+      environment:
+        PKG_MANAGER: <<parameters.pkg_manager>>
+      command: <<include(scripts/ensure-pkg-manager.sh)>>
+  - run:
+      name: Check for package.json
+      working_directory: <<parameters.pkg_json_dir>>
+      command: <<include(scripts/check-pkg-json.sh)>>
+  - run:
+      name: Process lockfile
+      working_directory: <<parameters.pkg_json_dir>>
+      command: <<include(scripts/process-lockfile.sh)>>
+  - restore_cache:
+      keys:
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-{{ checksum "/tmp/node-lockfile" }}
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-
+        - node-{{ arch }}-<<parameters.cache_version>>-
+  - run:
+      name: Install dependencies
+      working_directory: <<parameters.pkg_json_dir>>
+      environment:
+        PKG_MANAGER: <<parameters.pkg_manager>>
+      command: <<include(scripts/install-dependencies.sh)>>
+  - when:
+      condition:
+        equal: [npm, <<parameters.pkg_manager>>]
+      steps:
+        - save_cache:
+            key: node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-{{ checksum "/tmp/node-lockfile" }}
+            paths:
+              - ~/.npm
+  - when:
+      condition:
+        equal: [pnpm, <<parameters.pkg_manager>>]
+      steps:
+        - save_cache:
+            key: node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-{{ checksum "/tmp/node-lockfile" }}
+            paths:
+              - ~/.pnpm-store
+  - run:
+      name: Remove temporary lockfile
+      command: rm -f /tmp/node-lockfile
