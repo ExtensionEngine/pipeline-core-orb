@@ -1,0 +1,41 @@
+description: >
+  Simple command that enables running scripts defined within package.json.
+  Requires execution environment with Node.js >= 16.17 pre-installed.
+
+parameters:
+  pkg_manager:
+    type: enum
+    enum: ['npm', 'pnpm']
+    default: 'npm'
+    description: Choose Node.js package manager to use.
+  pkg_json_dir:
+    type: string
+    default: '.'
+    description: >
+      Path to the directory containing package.json file.
+      Not needed when package.json is in the root.
+  cache_version:
+    type: string
+    default: 'v1'
+    description: >
+      Change the default cache version if the cache needs to be cleared for some reason.
+  script:
+    type: string
+    default: ''
+    description: >
+      Name of the script to execute. Passed as is to the run command of choosen pacakge
+      manager, meaning it can contain arguments as well.
+
+steps:
+  - checkout
+  - install_dependencies:
+      pkg_manager: <<parameters.pkg_manager>>
+      pkg_json_dir: <<parameters.pkg_json_dir>>
+      cache_version: <<parameters.cache_version>>
+  - run:
+      name: Run <<parameters.pkg_manager>> <<parameters.script>>
+      environment:
+        PKG_MANAGER: <<parameters.pkg_manager>>
+        SCRIPT: <<parameters.script>>
+      command: <<include(scripts/run-script.sh)>>
+
