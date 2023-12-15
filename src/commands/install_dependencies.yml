@@ -1,6 +1,6 @@
 description: >
   Install dependencies with caching, optionally choose a package manager.
-  Requires execution environment with Node.js >= 16.17 pre-installed.
+  Requires execution environment with Node.js >= 16.20 pre-installed.
 
 parameters:
   pkg_manager:
@@ -14,6 +14,12 @@ parameters:
     description: >
       Path to the directory containing package.json file.
       Not needed when package.json is in the root.
+  install_command:
+    type: string
+    default: ''
+    description: >
+      Custom command to install dependencies. Useful when default commands,
+      "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
   cache_version:
     type: string
     default: 'v1'
@@ -33,6 +39,8 @@ steps:
   - run:
       name: Process lockfile
       working_directory: <<parameters.pkg_json_dir>>
+      environment:
+        PKG_MANAGER: <<parameters.pkg_manager>>
       command: <<include(scripts/process-lockfile.sh)>>
   - restore_cache:
       keys:
@@ -44,6 +52,7 @@ steps:
       working_directory: <<parameters.pkg_json_dir>>
       environment:
         PKG_MANAGER: <<parameters.pkg_manager>>
+        INSTALL_CMD: <<parameters.install_command>>
       command: <<include(scripts/install-dependencies.sh)>>
   - when:
       condition:

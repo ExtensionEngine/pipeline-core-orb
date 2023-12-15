@@ -1,4 +1,5 @@
 version: 2.1
+
 orbs:
   # Your orb will be automatically injected here during the pipeline.
   # Reference your orb's jobs and commands below as they will exist when built.
@@ -29,12 +30,74 @@ jobs:
       - checkout
       # Run your orb's commands to validate them.
       - core/greet
+  install-dependencies-npm-node-16:
+    executor:
+      name: core/default
+      tag: '16.20'
+    steps:
+      - checkout
+      - core/install_dependencies:
+          pkg_json_dir: ~/project/sample
+          cache_version: node16_v7
+      - run: cd ~/project/sample && npm run build
+  install-dependencies-pnpm-node-16:
+    executor:
+      name: core/default
+      tag: '16.20'
+    steps:
+      - checkout
+      - core/install_dependencies:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+          cache_version: node16_v7
+      - run: cd ~/project/sample && pnpm run build
+  install-dependencies-custom-command:
+    executor: core/default
+    steps:
+      - checkout
+      - core/install_dependencies:
+          pkg_json_dir: ~/project/sample
+          install_command: npm install
+          cache_version: v9
+      - run: cd ~/project/sample && npm run build
+  run-script-npm:
+    executor: core/default
+    steps:
+      - core/run_script:
+          pkg_json_dir: ~/project/sample
+          script: test -- --json --outputFile=results_npm.json
+      - run:
+          name: Print output file
+          working_directory: ~/project/sample
+          command: cat results_npm.json
+  run-script-pnpm:
+    executor: core/default
+    steps:
+      - core/run_script:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+          script: test --json --outputFile=results_pnpm.json
+      - run:
+          name: Print output file
+          working_directory: ~/project/sample
+          command: cat results_pnpm.json
+
 workflows:
   test-deploy:
     jobs:
       # Make sure to include "filters: *filters" in every test job you want to run as part of your deployment.
       # Test your orb's commands in a custom job and test your orb's jobs directly as a part of this workflow.
       - command-test:
+          filters: *filters
+      - install-dependencies-npm-node-16:
+          filters: *filters
+      - install-dependencies-pnpm-node-16:
+          filters: *filters
+      - install-dependencies-custom-command:
+          filters: *filters
+      - run-script-npm:
+          filters: *filters
+      - run-script-pnpm:
           filters: *filters
       # The orb must be re-packed for publishing, and saved to the workspace.
       - orb-tools/pack:
@@ -47,5 +110,10 @@ workflows:
           requires:
             - orb-tools/pack
             - command-test
+            - install-dependencies-npm-node-16
+            - install-dependencies-pnpm-node-16
+            - install-dependencies-custom-command
+            - run-script-npm
+            - run-script-pnpm
           context: orb-publishing
           filters: *release-filters
