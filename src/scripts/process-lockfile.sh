@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEST_FILE="/tmp/node-project-lock"
+DEST_FILE="/tmp/node-lockfile"
 
 if [ -f "package-lock.json" ]; then
   echo "Found package-lock.json, assuming lockfile"
