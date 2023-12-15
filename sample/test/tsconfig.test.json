@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.jsong",
+  "include": [
+    "**/*.ts"
+  ],
+  "compilerOptions": {
+    /* Emit */
+    "noEmit": true                            /* Disable emitting files from a compilation. */
+  }
+}
