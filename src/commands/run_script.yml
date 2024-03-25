@@ -14,6 +14,12 @@ parameters:
     description: >
       Path to the directory containing package.json file.
       Not needed when package.json is in the root.
+  install_command:
+    type: string
+    default: ''
+    description: >
+      Custom command to install dependencies. Useful when default commands,
+      "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
   cache_version:
     type: string
     default: 'v1'
@@ -31,9 +37,11 @@ steps:
   - install_dependencies:
       pkg_manager: <<parameters.pkg_manager>>
       pkg_json_dir: <<parameters.pkg_json_dir>>
+      install_command: <<parameters.install_command>>
       cache_version: <<parameters.cache_version>>
   - run:
-      name: Run <<parameters.pkg_manager>> <<parameters.script>>
+      name: Run "<<parameters.script>>" with "<<parameters.pkg_manager>>"
+      working_directory: <<parameters.pkg_json_dir>>
       environment:
         PKG_MANAGER: <<parameters.pkg_manager>>
         SCRIPT: <<parameters.script>>

@@ -6,6 +6,6 @@ if [ ! -f "package.json" ]; then
   echo
   echo "Content of current directory:"
   echo 
-  ls
+  ls -al
   exit 1
 fi
