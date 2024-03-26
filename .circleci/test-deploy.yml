@@ -32,7 +32,7 @@ jobs:
       - core/greet
   install-dependencies-npm-node-16:
     executor:
-      name: core/default
+      name: core/node
       tag: '16.20'
     steps:
       - checkout
@@ -42,7 +42,7 @@ jobs:
       - run: cd ~/project/sample && npm run build
   install-dependencies-pnpm-node-16:
     executor:
-      name: core/default
+      name: core/node
       tag: '16.20'
     steps:
       - checkout
@@ -52,7 +52,7 @@ jobs:
           cache_version: node16_v7
       - run: cd ~/project/sample && pnpm run build
   install-dependencies-custom-command:
-    executor: core/default
+    executor: core/node
     steps:
       - checkout
       - core/install_dependencies:
@@ -61,7 +61,7 @@ jobs:
           cache_version: v9
       - run: cd ~/project/sample && npm run build
   run-script-npm:
-    executor: core/default
+    executor: core/node
     steps:
       - core/run_script:
           pkg_json_dir: ~/project/sample
@@ -71,7 +71,7 @@ jobs:
           working_directory: ~/project/sample
           command: cat results_npm.json
   run-script-pnpm:
-    executor: core/default
+    executor: core/node
     steps:
       - core/run_script:
           pkg_manager: pnpm
