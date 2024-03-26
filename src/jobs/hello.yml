@@ -2,7 +2,7 @@ description: >
   Sample description
 # What will this job do?
 
-executor: default
+executor: node
 
 parameters:
   to:
