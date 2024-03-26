@@ -1,0 +1,19 @@
+description: >
+  A Docker executor using CircleCI's Ubuntu images optimized for CI.
+
+parameters:
+  tag:
+    type: string
+    default: current
+    description: >
+      Choose a specific cimg/base image tag:
+      https://hub.docker.com/r/cimg/base/tags
+  resource_class:
+    type: enum
+    enum: ['small', 'medium', 'medium+', 'large', 'xlarge', '2xlarge', '2xlarge+']
+    default: 'large'
+    description: Choose the executor resource class
+
+docker:
+  - image: cimg/base:<<parameters.tag>>
+resource_class: <<parameters.resource_class>>
