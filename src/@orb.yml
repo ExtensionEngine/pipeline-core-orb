@@ -4,7 +4,6 @@ description: >
   Core commands for Node.js projects, install dependencies with caching by default and run
   scripts, using npm or pnpm package manager. Tailored for use within Studion pipelines.
 
-# This information will be displayed in the orb registry and is not mandatory.
 display:
   home_url: "https://circleci.com/developer/orbs/orb/studion/core"
   source_url: "https://github.com/ExtensionEngine/pipeline-core-orb"
