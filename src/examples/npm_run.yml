@@ -1,0 +1,18 @@
+description: |
+  Run any script defined inside a "package.json" using the targeted package manager.
+  Before running the specified script, the command will fetch the code and install dependencies.
+usage:
+  version: 2.1
+  orbs:
+    core: studion/core@x.y.z
+  jobs:
+    test:
+      executor: core/node
+      steps:
+        - core/run_script:
+            pkg_manager: npm
+            cript: test
+  workflows:
+    test_app:
+      jobs:
+        - test

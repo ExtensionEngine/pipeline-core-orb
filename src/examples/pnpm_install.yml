@@ -1,0 +1,26 @@
+description: |
+  By default, the "install_dependencies" command respects automated environments
+  and installs dependencies consistently and predictably.
+  There is an option to override the install command, package manager, and root directory.
+usage:
+  version: 2.1
+  orbs:
+    core: studion/core@x.y.z
+  jobs:
+    build:
+      executor:
+        name: core/node
+        tag: 20.11.0
+        resource_class: xlarge
+      steps:
+        - checkout
+        - core/install_dependencies:
+            pkg_manager: pnpm
+            pkg_json_dir: ~/workspace/project
+            install_command: pnpm i
+            cache_version: v3
+        - run: cd ~/workspace/project && pnpm run build
+  workflows:
+    build_app:
+      jobs:
+        - build
