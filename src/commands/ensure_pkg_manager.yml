@@ -1,0 +1,23 @@
+description: >
+  Ensure required package manager is in place, optionally specifing the exact version.
+  Requires execution environment with Node.js >= 16.17 pre-installed.
+
+parameters:
+  ref:
+    type: string
+    default: $DEFAULT_PKG_MANAGER
+    description: |
+      Choose Node.js package manager to use. Supports npm and pnpm.
+      The package manager must follow the format <name>[@<version|tag>].
+      Omitting the version implies that the npm version is determined by the target Node.js environment,
+      while pnpm will default to the latest version.
+
+steps:
+  - run:
+      name: Check Node.js version
+      command: <<include(scripts/check-node-version.sh)>>
+  - run:
+      name: Ensure package manager
+      environment:
+        PKG_MANAGER: <<parameters.ref>>
+      command: <<include(scripts/ensure-pkg-manager.sh)>>

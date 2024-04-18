@@ -15,6 +15,62 @@ release-filters: &release-filters
     only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
 
 jobs:
+  ensure-npm-version:
+    executor: core/node
+    steps:
+      - core/ensure_pkg_manager:
+          ref: npm@latest
+      - run:
+          name: Validate version
+          command: |
+            NPM_LATEST_VERSION=$(npm view npm version)
+            if ! npm --version | grep -q "$NPM_LATEST_VERSION"; then
+              echo "npm version $NPM_LATEST_VERSION not found"
+              exit 1
+            fi
+  ensure-pnpm-version-node-16:
+    executor:
+      name: core/node
+      tag: '16.20'
+    steps:
+      - core/ensure_pkg_manager:
+          ref: pnpm@8.8.0
+      - run:
+          name: Validate version
+          command: |
+            if ! pnpm --version | grep -q "8.8.0"; then
+              echo "pnpm version 8.8.0 not found"
+              exit 1
+            fi
+  ensure-pnpm-version-node-18:
+    executor:
+      name: core/node
+      tag: '18.19'
+    steps:
+      - core/ensure_pkg_manager:
+          ref: pnpm@9.0.1
+      - run:
+          name: Validate version
+          command: |
+            if ! pnpm --version | grep -q "9.0.1"; then
+              echo "pnpm version 9.0.1 not found"
+              exit 1
+            fi
+  ensure-pnpm-latest:
+    executor: core/node
+    steps:
+      - checkout
+      - run: cd sample
+      - core/ensure_pkg_manager:
+          ref: pnpm
+      - run:
+          name: Validate version
+          command: |
+            PNPM_LATEST_VERSION=$(npm view pnpm version)
+            if ! pnpm --version | grep -q "$PNPM_LATEST_VERSION"; then
+              echo "pnpm version $PNPM_LATEST_VERSION not found"
+              exit 1
+            fi
   install-dependencies-npm-node-16:
     executor:
       name: core/node
@@ -22,6 +78,7 @@ jobs:
     steps:
       - checkout
       - core/install_dependencies:
+          pkg_manager: npm
           pkg_json_dir: ~/project/sample
           cache_version: node16_v7
       - run: cd ~/project/sample && npm run build
@@ -32,7 +89,7 @@ jobs:
     steps:
       - checkout
       - core/install_dependencies:
-          pkg_manager: pnpm
+          pkg_manager: pnpm@latest-8
           pkg_json_dir: ~/project/sample
           cache_version: node16_v7
       - run: cd ~/project/sample && pnpm run build
@@ -41,6 +98,7 @@ jobs:
     steps:
       - checkout
       - core/install_dependencies:
+          pkg_manager: npm
           pkg_json_dir: ~/project/sample
           install_command: npm install
           cache_version: v9
@@ -49,6 +107,7 @@ jobs:
     executor: core/node
     steps:
       - core/run_script:
+          pkg_manager: npm
           pkg_json_dir: ~/project/sample
           script: test -- --json --outputFile=results_npm.json
       - run:
@@ -70,6 +129,14 @@ jobs:
 workflows:
   test-deploy:
     jobs:
+      - ensure-npm-version:
+          filters: *filters
+      - ensure-pnpm-version-node-16:
+          filters: *filters
+      - ensure-pnpm-version-node-18:
+          filters: *filters
+      - ensure-pnpm-latest:
+          filters: *filters
       - install-dependencies-npm-node-16:
           filters: *filters
       - install-dependencies-pnpm-node-16:
@@ -88,6 +155,10 @@ workflows:
           pub_type: production
           requires:
             - orb-tools/pack
+            - ensure-npm-version
+            - ensure-pnpm-version-node-16
+            - ensure-pnpm-version-node-18
+            - ensure-pnpm-latest
             - install-dependencies-npm-node-16
             - install-dependencies-pnpm-node-16
             - install-dependencies-custom-command
