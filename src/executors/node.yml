@@ -11,7 +11,7 @@ parameters:
   resource_class:
     type: enum
     enum: ['small', 'medium', 'medium+', 'large', 'xlarge', '2xlarge', '2xlarge+']
-    default: 'large'
+    default: 'medium'
     description: Choose the executor resource class
 
 docker:
