@@ -1,3 +1,3 @@
 #!/bin/bash
 
-eval "$PKG_MANAGER" run "$SCRIPT"
+eval "$CURRENT_PKG_MANAGER" run "$SCRIPT"

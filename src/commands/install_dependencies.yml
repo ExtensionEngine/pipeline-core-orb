@@ -1,13 +1,16 @@
 description: >
   Install dependencies with caching, optionally choose a package manager.
-  Requires execution environment with Node.js >= 16.20 pre-installed.
+  Requires execution environment with Node.js >= 16.17 pre-installed.
 
 parameters:
   pkg_manager:
-    type: enum
-    enum: ['npm', 'pnpm']
-    default: 'npm'
-    description: Choose Node.js package manager to use.
+    type: string
+    default: $DEFAULT_PKG_MANAGER
+    description: |
+      Choose Node.js package manager to use. Supports npm and pnpm.
+      The package manager must follow the format <name>[@<version|tag>].
+      Omitting the version implies that the npm version is determined by the target Node.js environment,
+      while pnpm will default to the latest version.
   pkg_json_dir:
     type: string
     default: '.'
@@ -23,15 +26,11 @@ parameters:
   cache_version:
     type: string
     default: 'v1'
-    description: >
-      Change the default cache version if the cache needs to be cleared for some reason.
+    description: Change the default cache version if the cache needs to be cleared for some reason.
 
 steps:
-  - run:
-      name: Ensure package manager
-      environment:
-        PKG_MANAGER: <<parameters.pkg_manager>>
-      command: <<include(scripts/ensure-pkg-manager.sh)>>
+  - ensure_pkg_manager:
+      ref: <<parameters.pkg_manager>>
   - run:
       name: Check for package.json
       working_directory: <<parameters.pkg_json_dir>>
@@ -39,8 +38,6 @@ steps:
   - run:
       name: Process lockfile
       working_directory: <<parameters.pkg_json_dir>>
-      environment:
-        PKG_MANAGER: <<parameters.pkg_manager>>
       command: <<include(scripts/process-lockfile.sh)>>
   - restore_cache:
       keys:
@@ -51,12 +48,11 @@ steps:
       name: Install dependencies
       working_directory: <<parameters.pkg_json_dir>>
       environment:
-        PKG_MANAGER: <<parameters.pkg_manager>>
         INSTALL_CMD: <<parameters.install_command>>
       command: <<include(scripts/install-dependencies.sh)>>
   - when:
       condition:
-        equal: [npm, <<parameters.pkg_manager>>]
+        matches: { pattern: "^npm(.{0,})?$", value: <<parameters.pkg_manager>> }
       steps:
         - save_cache:
             key: node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-{{ checksum "/tmp/node-lockfile" }}
@@ -64,7 +60,7 @@ steps:
               - ~/.npm
   - when:
       condition:
-        equal: [pnpm, <<parameters.pkg_manager>>]
+        matches: { pattern: "^pnpm(.{0,})?$", value: <<parameters.pkg_manager>> }
       steps:
         - save_cache:
             key: node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-{{ checksum "/tmp/node-lockfile" }}

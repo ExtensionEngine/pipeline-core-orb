@@ -1,0 +1,20 @@
+description: |
+  Ensure the desired package manager, including the version, is installed on the system.
+  If desired the package manager can be set through the DEFAULT_PKG_MANAGER environment variable.
+  The pnpm is installed using the Corepack, while the npm is used to update itself when required.
+
+usage:
+  version: 2.1
+  orbs:
+    core: studion/core@x.y.z
+  jobs:
+    audit:
+      executor: core/node
+      steps:
+        - core/ensure_pkg_manager:
+            ref: pnpm@9.0.1
+        - run: pnpm audit --prod
+  workflows:
+    audit_deps:
+      jobs:
+        - audit
