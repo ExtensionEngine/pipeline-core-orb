@@ -2,6 +2,7 @@ description: |
   By default, the "install_dependencies" command respects automated environments
   and installs dependencies consistently and predictably.
   There is an option to override the install command, package manager, and root directory.
+
 usage:
   version: 2.1
   orbs:
