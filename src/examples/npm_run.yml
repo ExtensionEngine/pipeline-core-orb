@@ -1,6 +1,7 @@
 description: |
   Run any script defined inside a "package.json" using the targeted package manager.
   Before running the specified script, the command will fetch the code and install dependencies.
+
 usage:
   version: 2.1
   orbs:
@@ -11,7 +12,7 @@ usage:
       steps:
         - core/run_script:
             pkg_manager: npm
-            cript: test
+            script: test
   workflows:
     test_app:
       jobs:
