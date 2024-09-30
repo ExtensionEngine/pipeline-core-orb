@@ -5,7 +5,7 @@ description: >
 parameters:
   pkg_manager:
     type: string
-    default: $DEFAULT_PKG_MANAGER
+    default: ${DEFAULT_PKG_MANAGER}
     description: |
       Choose Node.js package manager to use. Supports npm and pnpm.
       The package manager must follow the format <name>[@<version|tag>].
