@@ -37,35 +37,13 @@ if [[ "$NAME" == "pnpm" ]]; then
     $SUDO npm rm -g pnpm > /dev/null 2>&1
   fi
 
-  export COREPACK_DEFAULT_TO_LATEST=0
-  $SUDO corepack enable pnpm
-
   PNPM_VERSION=$(npm view pnpm version)
 
   if [[ -n "$VERSION" ]]; then
     PNPM_VERSION="$VERSION"
   fi
 
-  COREPACK_VERSION_REGEX="([0-9]+).([0-9]+)."
-  COREPACK_VERSION=$(corepack -v)
-  LEGACY_MODE=false
-
-  if [[ "$COREPACK_VERSION" =~ $COREPACK_VERSION_REGEX ]]; then
-    MAJOR="${BASH_REMATCH[1]}"
-    MINOR="${BASH_REMATCH[2]}"
-
-    if [[ "$MAJOR" -eq 0 && "$MINOR" -lt 20 ]]; then
-      # Required for Node 16 support
-      LEGACY_MODE=true
-      echo "Using Corepack legacy mode"
-    fi
-  fi
-
-  if "$LEGACY_MODE"; then
-    corepack prepare pnpm@"$PNPM_VERSION" --activate
-  else
-    corepack install -g pnpm@"$PNPM_VERSION"
-  fi
+  $SUDO npm i -g pnpm@"$PNPM_VERSION"
 
   echo "Required pnpm version: $PNPM_VERSION"
   echo "Installed pnpm version: $(pnpm --version)"

@@ -2,7 +2,7 @@
 
 An orb to facilitate Node.js work within Studion CircleCI pipelines. Inspired by CircleCI Node Orb.\
 Key features:
-- Support for pnpm using Corepack, and npm
+- Support for pnpm and npm
 - Ensure the specific version/tag of the package manager is installed
 - The default value of the package manager is picked from the environment
 - Install dependencies with caching enabled by default
