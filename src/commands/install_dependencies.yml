@@ -48,7 +48,7 @@ steps:
       name: Install dependencies
       working_directory: <<parameters.pkg_json_dir>>
       environment:
-        INSTALL_CMD: <<parameters.install_command>>
+        PARAM_STR_INSTALL_COMMAND: <<parameters.install_command>>
       command: <<include(scripts/install-dependencies.sh)>>
   - when:
       condition:
