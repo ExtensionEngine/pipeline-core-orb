@@ -10,6 +10,7 @@ usage:
     test:
       executor: core/node
       steps:
+        - checkout
         - core/run_script:
             pkg_manager: npm
             script: test
