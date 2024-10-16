@@ -106,6 +106,7 @@ jobs:
   run-script-npm:
     executor: core/node
     steps:
+      - checkout
       - core/run_script:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
@@ -117,6 +118,7 @@ jobs:
   run-script-pnpm:
     executor: core/node
     steps:
+      - checkout
       - core/run_script:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample

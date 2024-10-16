@@ -35,7 +35,6 @@ parameters:
       manager, meaning it can contain arguments as well.
 
 steps:
-  - checkout
   - install_dependencies:
       pkg_manager: <<parameters.pkg_manager>>
       pkg_json_dir: <<parameters.pkg_json_dir>>
