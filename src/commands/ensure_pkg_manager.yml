@@ -1,6 +1,6 @@
 description: >
   Ensure required package manager is in place, optionally specifing the exact version.
-  Requires execution environment with Node.js >= 16.17 pre-installed.
+  Requires execution environment with Node.js >= 16.20 pre-installed.
 
 parameters:
   ref:

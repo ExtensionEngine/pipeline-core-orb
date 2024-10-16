@@ -1,6 +1,6 @@
 description: >
   Install dependencies with caching, optionally choose a package manager.
-  Requires execution environment with Node.js >= 16.17 pre-installed.
+  Requires execution environment with Node.js >= 16.20 pre-installed.
 
 parameters:
   pkg_manager:
