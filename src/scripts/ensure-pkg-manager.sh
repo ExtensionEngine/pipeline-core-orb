@@ -13,8 +13,10 @@ if [[ "${PARAM_STR_REF}" =~ ${PKG_MANAGER_WITH_VERSION_REGEX} ]]; then
 fi
 
 echo "export CURRENT_PKG_MANAGER='${NAME}'" >> "${BASH_ENV}"
+echo "Starting to ensure ${NAME} is set for usage"
 
 if [[ ${EUID} -ne 0 ]]; then
+  echo "Using sudo privileges to finish the process"
   SUDO="sudo"
 fi
 
