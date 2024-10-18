@@ -19,5 +19,5 @@ steps:
   - run:
       name: Ensure package manager
       environment:
-        PKG_MANAGER: <<parameters.ref>>
+        PARAM_STR_REF: <<parameters.ref>>
       command: <<include(scripts/ensure-pkg-manager.sh)>>

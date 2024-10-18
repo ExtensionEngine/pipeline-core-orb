@@ -44,6 +44,6 @@ steps:
       name: Run "<<parameters.script>>" with "<<parameters.pkg_manager>>"
       working_directory: <<parameters.pkg_json_dir>>
       environment:
-        SCRIPT: <<parameters.script>>
+        PARAM_STR_SCRIPT: <<parameters.script>>
       command: <<include(scripts/run-script.sh)>>
 

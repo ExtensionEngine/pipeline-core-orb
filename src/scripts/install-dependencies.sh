@@ -1,10 +1,10 @@
 #!/bin/bash
 
-if [[ -n "$INSTALL_CMD" ]]; then
+if [[ -n "${PARAM_STR_INSTALL_COMMAND}" ]]; then
   echo "Running custom install command:"
-  eval "$INSTALL_CMD"
-elif [[ "$CURRENT_PKG_MANAGER" == "npm" ]]; then
+  eval "${PARAM_STR_INSTALL_COMMAND}"
+elif [[ "${CURRENT_PKG_MANAGER}" == "npm" ]]; then
   npm ci
-elif [[ "$CURRENT_PKG_MANAGER" == "pnpm" ]]; then
+elif [[ "${CURRENT_PKG_MANAGER}" == "pnpm" ]]; then
   pnpm i --frozen-lockfile
 fi
