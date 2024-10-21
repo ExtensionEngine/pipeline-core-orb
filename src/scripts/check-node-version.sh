@@ -11,6 +11,7 @@ if [[ "${NODE_VERSION}" =~ ${NODE_VERSION_REGEX} ]]; then
 
   if [[ "${MAJOR}" -lt 16 || ("${MAJOR}" -eq 16 && "${MINOR}" -lt 20) ]]; then
     echo "At least Node.js v16.20 is required!"
+
     exit 1
   fi
 fi

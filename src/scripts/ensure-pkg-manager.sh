@@ -26,6 +26,7 @@ check_instalation () {
 
   if [[ "${installed_version}" != "${required_version}" ]]; then
     echo "Failed to install $1 '${required_version}'"
+
     exit 2
   fi
 }
@@ -40,13 +41,13 @@ echo "Starting to ensure ${NAME} is set for usage"
 
 if [[ ${EUID} -ne 0 ]]; then
   echo "Using sudo privileges to finish the process"
+
   SUDO="sudo"
 fi
 
 if [[ "${NAME}" == "npm" ]]; then
   if [[ -n "${VERSION}" ]]; then
     ${SUDO} npm i -g npm@"${VERSION}"
-
     check_instalation "${NAME}" "${VERSION}"
   else
     echo "Detected npm version: $(npm --version)"
@@ -58,6 +59,7 @@ fi
 if [[ "${NAME}" == "pnpm" ]]; then
   if command -v pnpm > /dev/null 2>&1; then
     echo "Found pnpm installation, removing it"
+
     ${SUDO} rm -rf "$(pnpm store path)" > /dev/null 2>&1
     ${SUDO} rm -rf "${PNPM_HOME}" > /dev/null 2>&1
     ${SUDO} npm rm -g pnpm > /dev/null 2>&1
@@ -68,10 +70,10 @@ if [[ "${NAME}" == "pnpm" ]]; then
   fi
 
   ${SUDO} npm i -g pnpm@"${VERSION}"
-
   check_instalation "${NAME}" "${VERSION}"
 
   echo "Setting ~/.pnpm-store as the store directory"
+
   pnpm config set store-dir ~/.pnpm-store
 
   exit 0
