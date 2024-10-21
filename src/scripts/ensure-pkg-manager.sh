@@ -4,8 +4,31 @@ PARAM_STR_REF=$(circleci env subst "${PARAM_STR_REF}")
 PKG_MANAGER_WITH_VERSION_REGEX="(npm|pnpm)@(([0-9]+.?){0,2}[0-9]+|[a-z]+-?([0-9]+)?)"
 NAME="${PARAM_STR_REF}"
 VERSION=""
-PNPM_VERSION=""
 SUDO=""
+
+check_instalation () {
+  local installed_version
+  local required_version
+  local tag_regex
+  local tag_mapping
+
+  installed_version=$(eval "$1" --version)
+  required_version="$2"
+  tag_regex=$(eval echo "$2":)
+  tag_mapping=$(eval npm dist-tag ls "$1" | grep "${tag_regex}" || true)
+
+  if [[ -n "${tag_mapping}" ]]; then
+    required_version=$(echo "${tag_mapping}" | awk '{print $2}')
+  fi
+
+  echo "Installed $1 version: ${installed_version}"
+  echo "Required $1 version: ${required_version}"
+
+  if [[ "${installed_version}" != "${required_version}" ]]; then
+    echo "Failed to install $1 '${required_version}'"
+    exit 2
+  fi
+}
 
 if [[ "${PARAM_STR_REF}" =~ ${PKG_MANAGER_WITH_VERSION_REGEX} ]]; then
   NAME="${BASH_REMATCH[1]}"
@@ -23,8 +46,8 @@ fi
 if [[ "${NAME}" == "npm" ]]; then
   if [[ -n "${VERSION}" ]]; then
     ${SUDO} npm i -g npm@"${VERSION}"
-    echo "Required npm version: ${VERSION}"
-    echo "Installed npm version: $(npm --version)"
+
+    check_instalation "${NAME}" "${VERSION}"
   else
     echo "Detected npm version: $(npm --version)"
   fi
@@ -40,16 +63,13 @@ if [[ "${NAME}" == "pnpm" ]]; then
     ${SUDO} npm rm -g pnpm > /dev/null 2>&1
   fi
 
-  if [[ -n "${VERSION}" ]]; then
-    PNPM_VERSION="${VERSION}"
-  else
-    PNPM_VERSION=$(npm view pnpm version)
+  if [[ -z "${VERSION}" ]]; then
+    VERSION=$(npm view pnpm version)
   fi
 
-  ${SUDO} npm i -g pnpm@"${PNPM_VERSION}"
+  ${SUDO} npm i -g pnpm@"${VERSION}"
 
-  echo "Required pnpm version: ${PNPM_VERSION}"
-  echo "Installed pnpm version: $(pnpm --version)"
+  check_instalation "${NAME}" "${VERSION}"
 
   echo "Setting ~/.pnpm-store as the store directory"
   pnpm config set store-dir ~/.pnpm-store
