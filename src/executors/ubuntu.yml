@@ -1,5 +1,5 @@
 description: >
-  A Docker executor using CircleCI's Ubuntu images optimized for CI.
+  Docker executor using CI-optimized Ubuntu image built to run on CircleCI.
 
 parameters:
   tag:
