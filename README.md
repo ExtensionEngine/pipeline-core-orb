@@ -7,6 +7,7 @@ Key features:
 - The default value of the package manager is picked from the environment
 - Install dependencies with caching enabled by default
 - Run scripts defined inside a package.json using a command for better composition
+- Use Docker executor with integrated Infisical for secure secret retrieval
 - Can only run in execution environments with Node.js pre-installed
 
 ## Usage
