@@ -1,5 +1,5 @@
 description: >
-  A Docker executor using CircleCI's Node.js images optimized for CI.
+  Docker executor using CI-optimized Node.js image built to run on CircleCI.
 
 parameters:
   tag:
