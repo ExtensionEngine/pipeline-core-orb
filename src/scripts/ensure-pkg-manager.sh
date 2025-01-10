@@ -6,7 +6,7 @@ NAME="${PARAM_STR_REF}"
 VERSION=""
 SUDO=""
 
-check_instalation () {
+check_installation () {
   local installed_version
   local required_version
   local tag_regex
@@ -48,7 +48,7 @@ fi
 if [[ "${NAME}" == "npm" ]]; then
   if [[ -n "${VERSION}" ]]; then
     ${SUDO} npm i -g npm@"${VERSION}"
-    check_instalation "${NAME}" "${VERSION}"
+    check_installation "${NAME}" "${VERSION}"
   else
     echo "Detected npm version: $(npm --version)"
   fi
@@ -70,7 +70,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
   fi
 
   ${SUDO} npm i -g pnpm@"${VERSION}"
-  check_instalation "${NAME}" "${VERSION}"
+  check_installation "${NAME}" "${VERSION}"
 
   echo "Setting ~/.pnpm-store as the store directory"
 
