@@ -28,41 +28,11 @@ jobs:
               echo "npm version $NPM_LATEST_VERSION not found"
               exit 1
             fi
-  ensure-pnpm-version-node-16:
-    executor:
-      name: core/node
-      tag: '16.20'
+  ensure-pnpm-version:
+    executor: core/node_secrets
     steps:
       - core/ensure_pkg_manager:
-          ref: pnpm@8.8.0
-      - run:
-          name: Validate version
-          command: |
-            if ! pnpm --version | grep -q "8.8.0"; then
-              echo "pnpm version 8.8.0 not found"
-              exit 1
-            fi
-  ensure-pnpm-version-node-18:
-    executor:
-      name: core/node
-      tag: '18.19'
-    steps:
-      - core/ensure_pkg_manager:
-          ref: pnpm@9.0.1
-      - run:
-          name: Validate version
-          command: |
-            if ! pnpm --version | grep -q "9.0.1"; then
-              echo "pnpm version 9.0.1 not found"
-              exit 1
-            fi
-  ensure-pnpm-latest:
-    executor: core/node
-    steps:
-      - checkout
-      - run: cd sample
-      - core/ensure_pkg_manager:
-          ref: pnpm
+          ref: pnpm@latest
       - run:
           name: Validate version
           command: |
@@ -71,37 +41,37 @@ jobs:
               echo "pnpm version $PNPM_LATEST_VERSION not found"
               exit 1
             fi
-  install-dependencies-npm-node-16:
+  install-dependencies-npm-node-18:
     executor:
-      name: core/node
-      tag: '16.20'
+      name: core/node_secrets
+      tag: '18'
     steps:
       - checkout
       - core/install_dependencies:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
-          cache_version: node16_v7
+          cache_version: node18_v7
       - run: cd ~/project/sample && npm run build
-  install-dependencies-pnpm-node-16:
+  install-dependencies-pnpm-node-18:
     executor:
       name: core/node
-      tag: '16.20'
+      tag: '18.20'
     steps:
       - checkout
       - core/install_dependencies:
-          pkg_manager: pnpm@latest-8
+          pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          cache_version: node16_v7
+          cache_version: node18_v7
       - run: cd ~/project/sample && pnpm run build
   install-dependencies-custom-command:
     executor: core/node
     steps:
       - checkout
       - core/install_dependencies:
-          pkg_manager: npm
+          pkg_manager: pnpm@10.5.1
           pkg_json_dir: ~/project/sample
           install_command: npm install
-          cache_version: v9
+          cache_version: v10
       - run: cd ~/project/sample && npm run build
   run-script-npm:
     executor: core/node
@@ -133,15 +103,11 @@ workflows:
     jobs:
       - ensure-npm-version:
           filters: *filters
-      - ensure-pnpm-version-node-16:
+      - ensure-pnpm-version:
           filters: *filters
-      - ensure-pnpm-version-node-18:
+      - install-dependencies-npm-node-18:
           filters: *filters
-      - ensure-pnpm-latest:
-          filters: *filters
-      - install-dependencies-npm-node-16:
-          filters: *filters
-      - install-dependencies-pnpm-node-16:
+      - install-dependencies-pnpm-node-18:
           filters: *filters
       - install-dependencies-custom-command:
           filters: *filters
@@ -158,11 +124,9 @@ workflows:
           requires:
             - orb-tools/pack
             - ensure-npm-version
-            - ensure-pnpm-version-node-16
-            - ensure-pnpm-version-node-18
-            - ensure-pnpm-latest
-            - install-dependencies-npm-node-16
-            - install-dependencies-pnpm-node-16
+            - ensure-pnpm-version
+            - install-dependencies-npm-node-18
+            - install-dependencies-pnpm-node-18
             - install-dependencies-custom-command
             - run-script-npm
             - run-script-pnpm
