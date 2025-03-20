@@ -9,9 +9,9 @@ parameters:
     description: |
       Choose Node.js package manager to use. Supports npm and pnpm.
       The package manager must follow the format <name>[@<version|tag>].
-      Omitting the version implies that the npm version is determined by the target Node.js environment,
-      while pnpm will default to the latest version.
-
+      Omitting the version implies
+      (for npm) use the version that comes with the target Node.js environment,
+      (for pnpm) use the existing version if found, otherwise use the latest version.
 steps:
   - run:
       name: Check Node.js version
