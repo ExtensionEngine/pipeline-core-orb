@@ -112,7 +112,28 @@ jobs:
           name: Print output file
           working_directory: ~/project/sample
           command: cat results_pnpm.json
-
+  run-script-skip-install-dependencies:
+    executor: core/node
+    steps:
+      - checkout
+      - core/install_dependencies:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+      - run:
+          name: Unset CURRENT_PKG_MANAGER env
+          command: echo "export CURRENT_PKG_MANAGER=''" >> "${BASH_ENV}"
+      - core/run_script:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+          skip_install_dependencies: true
+          script: test --json --outputFile=results_pnpm.json
+      - run:
+          name: Verfiy install_dependencies was skipped
+          command: |
+            if [[ -n "${CURRENT_PKG_MANAGER}" ]]; then
+              echo "The install_dependencies command was not skipped"
+              exit 1
+            fi
 workflows:
   test-deploy:
     jobs:
@@ -132,6 +153,8 @@ workflows:
           filters: *filters
       - run-script-pnpm:
           filters: *filters
+      - run-script-skip-install-dependencies:
+          filters: *filters
       - orb-tools/pack:
           filters: *release-filters
       - orb-tools/publish:
@@ -148,5 +171,6 @@ workflows:
             - install-dependencies-custom-command
             - run-script-npm
             - run-script-pnpm
+            - run-script-skip-install-dependencies
           context: orb-publishing
           filters: *release-filters
