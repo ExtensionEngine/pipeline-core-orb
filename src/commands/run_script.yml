@@ -27,6 +27,12 @@ parameters:
     type: string
     default: 'v1'
     description: Change the default cache version if the cache needs to be cleared for some reason.
+  skip_install_dependencies:
+    type: boolean
+    default: false
+    description: |
+      The flag indicating whether to skip installing dependencies.
+      Useful in a case of multiple `run_script` commands inside a single job.
   script:
     type: string
     default: ''
@@ -35,15 +41,19 @@ parameters:
       manager, meaning it can contain arguments as well.
 
 steps:
-  - install_dependencies:
-      pkg_manager: <<parameters.pkg_manager>>
-      pkg_json_dir: <<parameters.pkg_json_dir>>
-      install_command: <<parameters.install_command>>
-      cache_version: <<parameters.cache_version>>
+  - unless:
+      condition: <<parameters.skip_install_dependencies>>
+      steps:
+        - install_dependencies:
+            pkg_manager: <<parameters.pkg_manager>>
+            pkg_json_dir: <<parameters.pkg_json_dir>>
+            install_command: <<parameters.install_command>>
+            cache_version: <<parameters.cache_version>>
   - run:
       name: Run "<<parameters.script>>" with "<<parameters.pkg_manager>>"
       working_directory: <<parameters.pkg_json_dir>>
       environment:
+        PARAM_STR_PKG_MANAGER: <<parameters.pkg_manager>>
         PARAM_STR_SCRIPT: <<parameters.script>>
       command: <<include(scripts/run-script.sh)>>
 
