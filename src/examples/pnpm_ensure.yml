@@ -1,6 +1,6 @@
 description: |
   Ensure the desired package manager, including the version, is installed on the system.
-  If desired the package manager can be set through the DEFAULT_PKG_MANAGER environment variable.
+  If desired, the package manager can be set through the DEFAULT_PKG_MANAGER environment variable.
   The npm is used to update itself and to install pnpm when required.
 
 usage:
