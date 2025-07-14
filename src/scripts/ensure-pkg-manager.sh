@@ -12,7 +12,7 @@ if [[ ${EUID} -ne 0 ]]; then
   SUDO="sudo"
 fi
 
-check_installation () {
+check_installation() {
   local installed_version
   local required_version
   local tag_regex
@@ -37,7 +37,7 @@ check_installation () {
   fi
 }
 
-change_pnpm_store_dir_and_exit () {
+change_pnpm_store_dir_and_exit() {
   local current_store_dir
   local target_store_dir
 
@@ -61,20 +61,20 @@ if [[ "${PARAM_STR_REF}" =~ ${PKG_MANAGER_WITH_VERSION_REGEX} ]]; then
   VERSION="${BASH_REMATCH[2]}"
 fi
 
-echo "export CURRENT_PKG_MANAGER='${NAME}'" >> "${BASH_ENV}"
+echo "export CURRENT_PKG_MANAGER='${NAME}'" >>"${BASH_ENV}"
 echo "Starting to ensure ${NAME} is set for usage"
 
 cd ~ || echo "Cannot navigate to home, possible version mismatch"
-  
+
 if [[ "${NAME}" == "npm" ]]; then
   echo "Detected npm $(npm --version)"
 
   if [[ -n "${VERSION}" ]]; then
-    if npm --version | grep "${VERSION}" > /dev/null 2>&1; then
+    if npm --version | grep "${VERSION}" >/dev/null 2>&1; then
       echo "Requested version of npm is already installed"
     else
       echo "Requested version of npm not found, updating detected version"
-    
+
       ${SUDO} npm i -g npm@"${VERSION}"
       check_installation "${NAME}" "${VERSION}"
     fi
@@ -88,14 +88,14 @@ if [[ "${NAME}" == "npm" ]]; then
 fi
 
 if [[ "${NAME}" == "pnpm" ]]; then
-  if command -v pnpm > /dev/null 2>&1; then
+  if command -v pnpm >/dev/null 2>&1; then
     echo "Detected pnpm $(pnpm --version)"
-    
+
     if [[ -z "${VERSION}" ]]; then
       echo "Using detected version of pnpm"
 
       change_pnpm_store_dir_and_exit
-    elif pnpm --version | grep "${VERSION}" > /dev/null 2>&1; then
+    elif pnpm --version | grep "${VERSION}" >/dev/null 2>&1; then
       echo "Requested vesion of pnpm is already installed"
 
       change_pnpm_store_dir_and_exit
@@ -103,9 +103,9 @@ if [[ "${NAME}" == "pnpm" ]]; then
 
     echo "Requested version of pnpm not found, removing detected version"
 
-    ${SUDO} rm -rf "$(pnpm store path)" > /dev/null 2>&1
-    ${SUDO} rm -rf "${PNPM_HOME}" > /dev/null 2>&1
-    ${SUDO} npm rm -g pnpm > /dev/null 2>&1
+    ${SUDO} rm -rf "$(pnpm store path)" >/dev/null 2>&1
+    ${SUDO} rm -rf "${PNPM_HOME}" >/dev/null 2>&1
+    ${SUDO} npm rm -g pnpm >/dev/null 2>&1
   else
     echo "Did not detect pnpm, proceeding with installation"
   fi
