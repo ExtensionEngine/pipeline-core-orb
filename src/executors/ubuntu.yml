@@ -10,8 +10,9 @@ parameters:
       https://hub.docker.com/r/cimg/base/tags
   resource_class:
     type: enum
-    enum: ['small', 'medium', 'medium+', 'large', 'xlarge', '2xlarge', '2xlarge+']
-    default: 'medium'
+    enum:
+      ["small", "medium", "medium+", "large", "xlarge", "2xlarge", "2xlarge+"]
+    default: "medium"
     description: Choose the executor resource class
 
 docker:

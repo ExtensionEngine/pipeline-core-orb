@@ -13,19 +13,19 @@ parameters:
       while pnpm will default to the latest version.
   pkg_json_dir:
     type: string
-    default: '.'
+    default: "."
     description: >
       Path to the directory containing package.json file.
       Not needed when package.json is in the root.
   install_command:
     type: string
-    default: ''
+    default: ""
     description: >
       Custom command to install dependencies. Useful when default commands,
       "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
   cache_version:
     type: string
-    default: 'v1'
+    default: "v1"
     description: Change the default cache version if the cache needs to be cleared for some reason.
   skip_install_dependencies:
     type: boolean
@@ -35,7 +35,7 @@ parameters:
       Useful in a case of multiple `run_script` commands inside a single job.
   script:
     type: string
-    default: ''
+    default: ""
     description: >
       Name of the script to execute. Passed as is to the run command of choosen pacakge
       manager, meaning it can contain arguments as well.
@@ -56,4 +56,3 @@ steps:
         PARAM_STR_PKG_MANAGER: <<parameters.pkg_manager>>
         PARAM_STR_SCRIPT: <<parameters.script>>
       command: <<include(scripts/run-script.sh)>>
-
