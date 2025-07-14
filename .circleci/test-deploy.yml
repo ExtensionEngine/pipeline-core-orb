@@ -59,7 +59,7 @@ jobs:
   install-dependencies-npm-node-18:
     executor:
       name: core/node_secrets
-      tag: '18'
+      tag: "18"
     steps:
       - checkout
       - core/install_dependencies:
@@ -70,7 +70,7 @@ jobs:
   install-dependencies-pnpm-node-18:
     executor:
       name: core/node
-      tag: '18.20'
+      tag: "18.20"
     steps:
       - checkout
       - core/install_dependencies:

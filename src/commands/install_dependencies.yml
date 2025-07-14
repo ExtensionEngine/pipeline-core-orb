@@ -13,19 +13,19 @@ parameters:
       while pnpm will default to the latest version.
   pkg_json_dir:
     type: string
-    default: '.'
+    default: "."
     description: >
       Path to the directory containing package.json file.
       Not needed when package.json is in the root.
   install_command:
     type: string
-    default: ''
+    default: ""
     description: >
       Custom command to install dependencies. Useful when default commands,
       "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
   cache_version:
     type: string
-    default: 'v1'
+    default: "v1"
     description: Change the default cache version if the cache needs to be cleared for some reason.
 
 steps:
@@ -60,7 +60,8 @@ steps:
               - ~/.npm
   - when:
       condition:
-        matches: { pattern: "^pnpm(.{0,})?$", value: <<parameters.pkg_manager>> }
+        matches:
+          { pattern: "^pnpm(.{0,})?$", value: <<parameters.pkg_manager>> }
       steps:
         - save_cache:
             key: node-{{ arch }}-<<parameters.cache_version>>-{{ .Branch }}-{{ checksum "/tmp/node-lockfile" }}
