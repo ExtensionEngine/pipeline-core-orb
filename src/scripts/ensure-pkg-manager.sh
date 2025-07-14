@@ -5,11 +5,19 @@ PKG_MANAGER_WITH_VERSION_REGEX="(npm|pnpm)@(([0-9]+.?){0,2}[0-9]+|[a-z]+-?([0-9]
 NAME="${PARAM_STR_REF}"
 VERSION=""
 SUDO=""
+NPM_SUDO=""
 
 if [[ ${EUID} -ne 0 ]]; then
-  echo "Using sudo privileges to finish the process"
+  echo "Using sudo privileges, excluding npm commands, to finish the process"
 
   SUDO="sudo"
+
+  if [[ ! -w "$(npm root -g)" ]]; then
+    echo "Missing write permission for global node_modules directory"
+    echo "Using sudo privileges for npm commands as well"
+
+    NPM_SUDO="sudo"
+  fi
 fi
 
 check_installation() {
@@ -75,7 +83,7 @@ if [[ "${NAME}" == "npm" ]]; then
     else
       echo "Requested version of npm not found, updating detected version"
 
-      ${SUDO} npm i -g npm@"${VERSION}"
+      ${NPM_SUDO} npm i -g npm@"${VERSION}"
       check_installation "${NAME}" "${VERSION}"
     fi
 
@@ -105,7 +113,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
 
     ${SUDO} rm -rf "$(pnpm store path)" >/dev/null 2>&1
     ${SUDO} rm -rf "${PNPM_HOME}" >/dev/null 2>&1
-    ${SUDO} npm rm -g pnpm >/dev/null 2>&1
+    ${NPM_SUDO} npm rm -g pnpm >/dev/null 2>&1
   else
     echo "Did not detect pnpm, proceeding with installation"
   fi
@@ -116,7 +124,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
     echo "Version not explicitly requested, opting for ${VERSION}"
   fi
 
-  ${SUDO} npm i -g pnpm@"${VERSION}"
+  ${NPM_SUDO} npm i -g pnpm@"${VERSION}"
   check_installation "${NAME}" "${VERSION}"
 
   echo "Setting ~/.pnpm-store as the store directory"

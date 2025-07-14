@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   orb-tools: circleci/orb-tools@12.0
+  node: circleci/node@7.1.0
   core: {}
 
 filters: &filters
@@ -46,6 +47,21 @@ jobs:
       - image: node:lts-slim
     resource_class: medium
     steps:
+      - core/ensure_pkg_manager:
+          ref: pnpm
+      - run:
+          name: Validate version
+          command: |
+            PNPM_LATEST_VERSION=$(npm view pnpm version)
+            if ! pnpm --version | grep -q "$PNPM_LATEST_VERSION"; then
+              echo "pnpm version $PNPM_LATEST_VERSION not found"
+              exit 1
+            fi
+  ensure-pnpm-machine-install:
+    machine:
+      image: ubuntu-2404:current
+    steps:
+      - node/install
       - core/ensure_pkg_manager:
           ref: pnpm
       - run:
@@ -143,6 +159,8 @@ workflows:
           filters: *filters
       - ensure-pnpm-fresh-install:
           filters: *filters
+      - ensure-pnpm-machine-install:
+          filters: *filters
       - install-dependencies-npm-node-18:
           filters: *filters
       - install-dependencies-pnpm-node-18:
@@ -166,6 +184,7 @@ workflows:
             - ensure-npm-version
             - ensure-pnpm-version
             - ensure-pnpm-fresh-install
+            - ensure-pnpm-machine-install
             - install-dependencies-npm-node-18
             - install-dependencies-pnpm-node-18
             - install-dependencies-custom-command
