@@ -1,9 +1,7 @@
 #!/bin/bash
 
-PARAM_STR_REF=$(circleci env subst "${PARAM_STR_REF}")
-PKG_MANAGER_WITH_VERSION_REGEX="(npm|pnpm)@(([0-9]+.?){0,2}[0-9]+|[a-z]+-?([0-9]+)?)"
-NAME="${PARAM_STR_REF}"
-VERSION=""
+NAME="${CURRENT_PKG_MANAGER}"
+VERSION="${CURRENT_PKG_MANAGER_VERSION}"
 SUDO=""
 NPM_SUDO=""
 
@@ -64,13 +62,7 @@ change_pnpm_store_dir_and_exit() {
   exit 0
 }
 
-if [[ "${PARAM_STR_REF}" =~ ${PKG_MANAGER_WITH_VERSION_REGEX} ]]; then
-  NAME="${BASH_REMATCH[1]}"
-  VERSION="${BASH_REMATCH[2]}"
-fi
-
-echo "export CURRENT_PKG_MANAGER='${NAME}'" >>"${BASH_ENV}"
-echo "Starting to ensure ${NAME} is set for usage"
+echo "Starting to ensure '${NAME}' is set for usage"
 
 cd ~ || echo "Cannot navigate to home, possible version mismatch"
 
