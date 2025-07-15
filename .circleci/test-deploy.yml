@@ -72,6 +72,19 @@ jobs:
               echo "pnpm version $PNPM_LATEST_VERSION not found"
               exit 1
             fi
+  ensure-default-pkg-manager-env:
+    executor: core/node
+    steps:
+      - core/ensure_pkg_manager
+      - run:
+          name: Validate version
+          command: |
+            PNPM_NEXT_10_VERSION=$(npm view pnpm dist-tags.next-10)
+            if ! pnpm --version | grep -q "$PNPM_NEXT_10_VERSION"; then
+              echo "pnpm version $PNPM_NEXT_10_VERSION not found"
+              exit 1
+            fi
+
   install-dependencies-npm-node-18:
     executor:
       name: core/node_secrets
@@ -161,6 +174,8 @@ workflows:
           filters: *filters
       - ensure-pnpm-machine-install:
           filters: *filters
+      - ensure-default-pkg-manager-env:
+          filters: *filters
       - install-dependencies-npm-node-18:
           filters: *filters
       - install-dependencies-pnpm-node-18:
@@ -185,6 +200,7 @@ workflows:
             - ensure-pnpm-version
             - ensure-pnpm-fresh-install
             - ensure-pnpm-machine-install
+            - ensure-default-pkg-manager-env
             - install-dependencies-npm-node-18
             - install-dependencies-pnpm-node-18
             - install-dependencies-custom-command

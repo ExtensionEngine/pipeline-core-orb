@@ -17,7 +17,10 @@ steps:
       name: Check Node.js version
       command: <<include(scripts/check-node-version.sh)>>
   - run:
-      name: Ensure package manager
+      name: Export package manager
       environment:
         PARAM_STR_REF: <<parameters.ref>>
+      command: <<include(scripts/export-pkg-manager.sh)>>
+  - run:
+      name: Ensure package manager
       command: <<include(scripts/ensure-pkg-manager.sh)>>
