@@ -121,7 +121,7 @@ jobs:
     steps:
       - checkout
       - core/run_script:
-          pkg_manager: pnpm
+          pkg_manager: pnpm@latest-10
           pkg_json_dir: ~/project/sample
           script: test --json --outputFile=results_pnpm.json
       - run:
