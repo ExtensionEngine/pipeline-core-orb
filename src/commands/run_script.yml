@@ -39,6 +39,12 @@ parameters:
     description: >
       Name of the script to execute. Passed as is to the run command of choosen pacakge
       manager, meaning it can contain arguments as well.
+  no_output_timeout:
+    type: string
+    default: "10m"
+    description: >
+      Elapsed time the command can run without output.
+      The string is a decimal with unit suffix, such as "20m", "1.25h", "5s".
 
 steps:
   - unless:
@@ -52,6 +58,7 @@ steps:
   - run:
       name: Run "<<parameters.script>>" with "<<parameters.pkg_manager>>"
       working_directory: <<parameters.pkg_json_dir>>
+      no_output_timeout: <<parameters.no_output_timeout>>
       environment:
         PARAM_STR_PKG_MANAGER: <<parameters.pkg_manager>>
         PARAM_STR_SCRIPT: <<parameters.script>>
