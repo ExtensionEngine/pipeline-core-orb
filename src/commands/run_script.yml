@@ -58,8 +58,8 @@ steps:
   - run:
       name: Run "<<parameters.script>>" with "<<parameters.pkg_manager>>"
       working_directory: <<parameters.pkg_json_dir>>
-      no_output_timeout: <<parameters.no_output_timeout>>
       environment:
         PARAM_STR_PKG_MANAGER: <<parameters.pkg_manager>>
         PARAM_STR_SCRIPT: <<parameters.script>>
       command: <<include(scripts/run-script.sh)>>
+      no_output_timeout: <<parameters.no_output_timeout>>
