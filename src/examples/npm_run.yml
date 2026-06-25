@@ -1,6 +1,6 @@
 description: |
-  Run any script defined inside a "package.json" using the targeted package manager.
-  Before running the specified script, the command will fetch the code and install dependencies.
+  Run any script defined inside a package.json using an already available package manager.
+  Install dependencies explicitly before running the specified script when the project requires them.
 
 usage:
   version: 2.1
@@ -11,6 +11,10 @@ usage:
       executor: core/node
       steps:
         - checkout
+        - core/ensure_pkg_manager:
+            pkg_manager: npm
+        - core/install_dependencies:
+            pkg_manager: npm
         - core/run_script:
             pkg_manager: npm
             script: test

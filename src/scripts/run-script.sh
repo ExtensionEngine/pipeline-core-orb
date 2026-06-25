@@ -1,18 +1,14 @@
 #!/bin/bash
 
-echo "Running custom script from package.json at ${PWD}"
+echo "Running package.json script at ${PWD}"
 
-PKG_MANAGER=$(circleci env subst "${PARAM_STR_PKG_MANAGER}")
-PKG_MANAGER_REGEX="^(npm|pnpm)(@.+)?$"
-
-if [[ "${PKG_MANAGER}" =~ ${PKG_MANAGER_REGEX} ]]; then
-  PKG_MANAGER="${BASH_REMATCH[1]}"
+if [[ "${CURRENT_PKG_MANAGER}" == "npm" ]]; then
+  eval npm run "${PARAM_STR_SCRIPT}"
+elif [[ "${CURRENT_PKG_MANAGER}" == "pnpm" ]]; then
+  eval pnpm run "${PARAM_STR_SCRIPT}"
 else
-  echo "Cannot run script with unsupported package manager '${PKG_MANAGER}'"
+  # This should not happen, but just to be on the safe side
+  echo "Cannot run script with unsupported package manager '${CURRENT_PKG_MANAGER}'"
 
   exit 1
 fi
-
-set -x
-eval "${PKG_MANAGER}" run "${PARAM_STR_SCRIPT}"
-set +x

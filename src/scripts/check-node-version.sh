@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js not detected"
+  echo "Execution environment with Node.js pre-installed is required!"
+
+  exit 1
+fi
+
 NODE_VERSION_REGEX="v([0-9]+).([0-9]+).([0-9]+)"
 NODE_VERSION=$(node -v)
 MAJOR=""

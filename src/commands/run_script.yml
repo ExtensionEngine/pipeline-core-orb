@@ -1,43 +1,27 @@
 description: >
-  Simple command that enables running scripts defined within package.json.
+  Run scripts defined within package.json using an already available package manager.
   Requires execution environment with Node.js >= 18.20 pre-installed.
 
 parameters:
   pkg_manager:
     type: string
-    default: ${DEFAULT_PKG_MANAGER}
+    default: ""
     description: |
       Choose Node.js package manager to use. Supports npm and pnpm.
-      The package manager must follow the format <name>[@<version|tag>].
-      Omitting the version implies that the npm version is determined by the target Node.js environment,
-      while pnpm will default to the latest version.
+      The package manager may follow the format <name>[@<version|tag>], but script execution uses only the name.
+      When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
+      This command does not install dependencies; use install_dependencies before this command when needed.
   pkg_json_dir:
     type: string
     default: "."
     description: >
       Path to the directory containing package.json file.
       Not needed when package.json is in the root.
-  install_command:
-    type: string
-    default: ""
-    description: >
-      Custom command to install dependencies. Useful when default commands,
-      "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
-  cache_version:
-    type: string
-    default: "v1"
-    description: Change the default cache version if the cache needs to be cleared for some reason.
-  skip_install_dependencies:
-    type: boolean
-    default: false
-    description: |
-      The flag indicating whether to skip installing dependencies.
-      Useful in a case of multiple `run_script` commands inside a single job.
   script:
     type: string
     default: ""
     description: >
-      Name of the script to execute. Passed as is to the run command of choosen pacakge
+      Name of the script to execute. Passed as is to the run command of chosen package
       manager, meaning it can contain arguments as well.
   no_output_timeout:
     type: string
@@ -47,19 +31,25 @@ parameters:
       The string is a decimal with unit suffix, such as "20m", "1.25h", "5s".
 
 steps:
-  - unless:
-      condition: <<parameters.skip_install_dependencies>>
-      steps:
-        - install_dependencies:
-            pkg_manager: <<parameters.pkg_manager>>
-            pkg_json_dir: <<parameters.pkg_json_dir>>
-            install_command: <<parameters.install_command>>
-            cache_version: <<parameters.cache_version>>
   - run:
-      name: Run "<<parameters.script>>" with "<<parameters.pkg_manager>>"
-      working_directory: <<parameters.pkg_json_dir>>
+      name: Check Node.js version
+      command: <<include(scripts/check-node-version.sh)>>
+  - run:
+      name: Resolve package manager
       environment:
         PARAM_STR_PKG_MANAGER: <<parameters.pkg_manager>>
+      command: <<include(scripts/export-pkg-manager.sh)>>
+  - run:
+      name: Validate package manager
+      command: <<include(scripts/validate-pkg-manager.sh)>>
+  - run:
+      name: Check for package.json
+      working_directory: <<parameters.pkg_json_dir>>
+      command: <<include(scripts/check-pkg-json.sh)>>
+  - run:
+      name: Run package.json script "<<parameters.script>>"
+      working_directory: <<parameters.pkg_json_dir>>
+      environment:
         PARAM_STR_SCRIPT: <<parameters.script>>
       command: <<include(scripts/run-script.sh)>>
       no_output_timeout: <<parameters.no_output_timeout>>
