@@ -218,7 +218,8 @@ jobs:
       - core/run_script:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
-          script: test -- --json --outputFile=results_npm.json
+          script: test
+          script_args: --json --outputFile=results_npm.json
       - run:
           name: Print output file
           working_directory: ~/project/sample
@@ -235,7 +236,8 @@ jobs:
       - core/run_script:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          script: test --json --outputFile=results_pnpm.json
+          script: test
+          script_args: --json --outputFile=results_pnpm.json
       - run:
           name: Print output file
           working_directory: ~/project/sample
@@ -249,7 +251,8 @@ jobs:
           pkg_json_dir: ~/project/sample
       - core/run_script:
           pkg_json_dir: ~/project/sample
-          script: test --json --outputFile=results_pnpm_default.json
+          script: test
+          script_args: --json --outputFile=results_pnpm_default.json
       - run:
           name: Validate run_script package manager metadata ownership
           command: |
@@ -275,11 +278,58 @@ jobs:
       - core/run_script:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          script: test --json --outputFile=results_external_pnpm.json
+          script: test
+          script_args: --json --outputFile=results_external_pnpm.json
       - run:
           name: Print output file
           working_directory: ~/project/sample
           command: cat results_external_pnpm.json
+  run-script-npm-workspace:
+    executor: core/node
+    steps:
+      - checkout
+      - core/run_script:
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample/workspace
+          script: workspace-test
+          script_args: workspace-result-npm.txt npm workspace
+          run_options: --workspace=workspace-app
+      - run:
+          name: Validate npm workspace script output
+          working_directory: ~/project/sample/workspace/packages/app
+          command: |
+            if [ "$(cat workspace-result-npm.txt)" != "npm|workspace" ]; then
+              echo "Unexpected npm workspace script output"
+              exit 1
+            fi
+      - run:
+          name: Clean npm workspace script output
+          working_directory: ~/project/sample/workspace/packages/app
+          command: rm -f workspace-result-npm.txt
+  run-script-pnpm-workspace:
+    executor: core/node
+    steps:
+      - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: pnpm
+      - core/run_script:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample/workspace
+          script: workspace-test
+          script_args: workspace-result-pnpm.txt pnpm workspace
+          run_options: --filter=workspace-app
+      - run:
+          name: Validate pnpm workspace script output
+          working_directory: ~/project/sample/workspace/packages/app
+          command: |
+            if [ "$(cat workspace-result-pnpm.txt)" != "pnpm|workspace" ]; then
+              echo "Unexpected pnpm workspace script output"
+              exit 1
+            fi
+      - run:
+          name: Clean pnpm workspace script output
+          working_directory: ~/project/sample/workspace/packages/app
+          command: rm -f workspace-result-pnpm.txt
 workflows:
   test-deploy:
     jobs:
@@ -313,6 +363,10 @@ workflows:
           filters: *filters
       - run-script-externally-prepared-pnpm:
           filters: *filters
+      - run-script-npm-workspace:
+          filters: *filters
+      - run-script-pnpm-workspace:
+          filters: *filters
       - orb-tools/pack:
           filters: *release-filters
       - orb-tools/publish:
@@ -336,5 +390,7 @@ workflows:
             - run-script-pnpm
             - run-script-default-pkg-manager-env
             - run-script-externally-prepared-pnpm
+            - run-script-npm-workspace
+            - run-script-pnpm-workspace
           context: orb-publishing
           filters: *release-filters

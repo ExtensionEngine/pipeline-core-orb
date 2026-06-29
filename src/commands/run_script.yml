@@ -1,5 +1,6 @@
 description: >
   Run scripts defined within package.json using an already available package manager.
+  Supports package manager specific run options, including npm and pnpm workspace selectors.
   Requires execution environment with Node.js >= 18.20 pre-installed.
 
 parameters:
@@ -15,14 +16,29 @@ parameters:
     type: string
     default: "."
     description: >
-      Path to the directory containing package.json file.
+      Path to the directory containing package.json file where the package manager should execute.
+      When using workspace selectors through run_options, this is typically the workspace root.
       Not needed when package.json is in the root.
   script:
     type: string
+    description: >
+      Name of the script to execute. Must contain only the package.json script name;
+      use run_options for package manager options and script_args for arguments passed to the script.
+  script_args:
+    type: string
     default: ""
     description: >
-      Name of the script to execute. Passed as is to the run command of chosen package
-      manager, meaning it can contain arguments as well.
+      Arguments passed to the package.json script. For npm, arguments are passed after an
+      automatically inserted -- separator. For pnpm, arguments are passed directly after
+      the script name; include -- explicitly when the script itself needs that separator.
+      Values are split on whitespace into command arguments.
+  run_options:
+    type: string
+    default: ""
+    description: >
+      Package manager specific options for the run command, including workspace selectors.
+      For npm these options are placed after the script name. For pnpm these options are placed before run.
+      Values are split on whitespace into command arguments.
   no_output_timeout:
     type: string
     default: "10m"
@@ -51,5 +67,7 @@ steps:
       working_directory: <<parameters.pkg_json_dir>>
       environment:
         PARAM_STR_SCRIPT: <<parameters.script>>
+        PARAM_STR_SCRIPT_ARGS: <<parameters.script_args>>
+        PARAM_STR_RUN_OPTIONS: <<parameters.run_options>>
       command: <<include(scripts/run-script.sh)>>
       no_output_timeout: <<parameters.no_output_timeout>>
