@@ -1,0 +1,9 @@
+{
+  "name": "workspace-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "workspace-test": "node workspace-test.js"
+  }
+}

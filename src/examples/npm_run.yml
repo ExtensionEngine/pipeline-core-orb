@@ -1,6 +1,7 @@
 description: |
   Run any script defined inside a package.json using an already available package manager.
   Install dependencies explicitly before running the specified script when the project requires them.
+  Use run_options for package manager specific options, including workspace selectors, and script_args for arguments passed after --.
 
 usage:
   version: 2.1
@@ -18,7 +19,23 @@ usage:
         - core/run_script:
             pkg_manager: npm
             script: test
+            script_args: --json --outputFile=results.json
+    workspace_test:
+      executor: core/node
+      steps:
+        - checkout
+        - core/ensure_pkg_manager:
+            pkg_manager: npm
+        - core/install_dependencies:
+            pkg_manager: npm
+        - core/run_script:
+            pkg_manager: npm
+            pkg_json_dir: ~/monorepo
+            script: test
+            script_args: --coverage
+            run_options: --workspace=app-name
   workflows:
     test_app:
       jobs:
         - test
+        - workspace_test
