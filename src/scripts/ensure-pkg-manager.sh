@@ -3,18 +3,18 @@
 NAME="${CURRENT_PKG_MANAGER}"
 VERSION="${CURRENT_PKG_MANAGER_VERSION}"
 SUDO=""
-NPM_SUDO=""
+NPM_I_SUDO=""
 
 if [[ ${EUID} -ne 0 ]]; then
-  echo "Using sudo privileges, excluding npm commands, to finish the process"
+  echo "Using sudo privileges, excluding npm install commands, to finish the process"
 
   SUDO="sudo"
 
   if [[ ! -w "$(npm root -g)" ]]; then
     echo "Missing write permission for global node_modules directory"
-    echo "Using sudo privileges for npm commands as well"
+    echo "Using sudo privileges for npm install commands as well"
 
-    NPM_SUDO="sudo"
+    NPM_I_SUDO="sudo"
   fi
 fi
 
@@ -48,7 +48,7 @@ change_pnpm_store_dir_and_exit() {
   local target_store_dir
 
   current_store_dir=$(pnpm store path)
-  target_store_dir="${HOME}/.pnpm_store"
+  target_store_dir="${HOME}/.pnpm-store"
 
   if [[ "${current_store_dir}" != "${target_store_dir}" ]]; then
     echo "Changing the pnpm store directory"
@@ -75,7 +75,7 @@ if [[ "${NAME}" == "npm" ]]; then
     else
       echo "Requested version of npm not found, updating detected version"
 
-      ${NPM_SUDO} npm i -g npm@"${VERSION}"
+      ${NPM_I_SUDO} npm i -g npm@"${VERSION}"
       check_installation "${NAME}" "${VERSION}"
     fi
 
@@ -96,7 +96,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
 
       change_pnpm_store_dir_and_exit
     elif pnpm --version | grep "${VERSION}" >/dev/null 2>&1; then
-      echo "Requested vesion of pnpm is already installed"
+      echo "Requested version of pnpm is already installed"
 
       change_pnpm_store_dir_and_exit
     fi
@@ -105,7 +105,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
 
     ${SUDO} rm -rf "$(pnpm store path)" >/dev/null 2>&1
     ${SUDO} rm -rf "${PNPM_HOME}" >/dev/null 2>&1
-    ${NPM_SUDO} npm rm -g pnpm >/dev/null 2>&1
+    ${SUDO} npm rm -g pnpm >/dev/null 2>&1
   else
     echo "Did not detect pnpm, proceeding with installation"
   fi
@@ -116,7 +116,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
     echo "Version not explicitly requested, opting for ${VERSION}"
   fi
 
-  ${NPM_SUDO} npm i -g pnpm@"${VERSION}"
+  ${NPM_I_SUDO} npm i -g pnpm@"${VERSION}"
   check_installation "${NAME}" "${VERSION}"
 
   echo "Setting ~/.pnpm-store as the store directory"

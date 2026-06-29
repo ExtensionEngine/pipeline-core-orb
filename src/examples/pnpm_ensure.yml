@@ -12,7 +12,7 @@ usage:
       executor: core/node
       steps:
         - core/ensure_pkg_manager:
-            ref: pnpm@9.0.1
+            pkg_manager: pnpm@9.0.1
         - run: pnpm audit --prod
   workflows:
     audit_deps:

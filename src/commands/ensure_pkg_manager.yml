@@ -1,15 +1,16 @@
 description: >
-  Ensure required package manager is in place, optionally specifing the exact version.
+  Ensure the requested package manager is installed and configured, optionally specifying the exact version.
   Requires execution environment with Node.js >= 18.20 pre-installed.
 
 parameters:
-  ref:
+  pkg_manager:
     type: string
-    default: ${DEFAULT_PKG_MANAGER}
+    default: ""
     description: |
-      Choose Node.js package manager to use. Supports npm and pnpm.
+      Choose Node.js package manager to ensure. Supports npm and pnpm.
       The package manager must follow the format <name>[@<version|tag>].
-      Omitting the version implies
+      When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
+      Omitting the version/tag implies
       (for npm) use the version that comes with the target Node.js environment,
       (for pnpm) use the existing version if found, otherwise use the latest version.
 steps:
@@ -17,9 +18,9 @@ steps:
       name: Check Node.js version
       command: <<include(scripts/check-node-version.sh)>>
   - run:
-      name: Export package manager
+      name: Resolve package manager
       environment:
-        PARAM_STR_REF: <<parameters.ref>>
+        PARAM_STR_PKG_MANAGER: <<parameters.pkg_manager>>
       command: <<include(scripts/export-pkg-manager.sh)>>
   - run:
       name: Ensure package manager

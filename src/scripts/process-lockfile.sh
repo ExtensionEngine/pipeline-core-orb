@@ -9,7 +9,7 @@ if [ -f "package-lock.json" ] && [[ "${CURRENT_PKG_MANAGER}" == "npm" ]]; then
 
   exit 0
 elif [ -f "pnpm-lock.yaml" ] && [[ "${CURRENT_PKG_MANAGER}" == "pnpm" ]]; then
-  echo "Found pnpm-lock.ymal, assuming lockfile"
+  echo "Found pnpm-lock.yaml, assuming lockfile"
 
   cp pnpm-lock.yaml "${DEST_FILE}"
 

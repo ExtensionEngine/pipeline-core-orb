@@ -1,6 +1,6 @@
 description: |
-  By default, the "install_dependencies" command respects automated environments
-  and installs dependencies consistently and predictably.
+  Install dependencies with caching using a package manager that has already been ensured.
+  Use ensure_pkg_manager before this command when the execution environment does not already provide the desired package manager.
   There is an option to override the install command, package manager, and root directory.
 
 usage:
@@ -15,6 +15,8 @@ usage:
         resource_class: xlarge
       steps:
         - checkout
+        - core/ensure_pkg_manager:
+            pkg_manager: pnpm@9.0.1
         - core/install_dependencies:
             pkg_manager: pnpm
             pkg_json_dir: ~/workspace/project

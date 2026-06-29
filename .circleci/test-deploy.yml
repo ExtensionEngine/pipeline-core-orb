@@ -20,7 +20,7 @@ jobs:
     executor: core/node
     steps:
       - core/ensure_pkg_manager:
-          ref: npm@latest
+          pkg_manager: npm@latest
       - run:
           name: Validate version
           command: |
@@ -33,7 +33,7 @@ jobs:
     executor: core/node_secrets
     steps:
       - core/ensure_pkg_manager:
-          ref: pnpm@latest
+          pkg_manager: pnpm@latest
       - run:
           name: Validate version
           command: |
@@ -48,7 +48,7 @@ jobs:
     resource_class: medium
     steps:
       - core/ensure_pkg_manager:
-          ref: pnpm
+          pkg_manager: pnpm
       - run:
           name: Validate version
           command: |
@@ -63,7 +63,7 @@ jobs:
     steps:
       - node/install
       - core/ensure_pkg_manager:
-          ref: pnpm
+          pkg_manager: pnpm
       - run:
           name: Validate version
           command: |
@@ -77,11 +77,15 @@ jobs:
     steps:
       - core/ensure_pkg_manager
       - run:
-          name: Validate version
+          name: Validate version and metadata ownership
           command: |
             PNPM_NEXT_10_VERSION=$(npm view pnpm dist-tags.next-10)
             if ! pnpm --version | grep -q "$PNPM_NEXT_10_VERSION"; then
               echo "pnpm version $PNPM_NEXT_10_VERSION not found"
+              exit 1
+            fi
+            if [ -f /tmp/node-pkg-manager ]; then
+              echo "ensure_pkg_manager should not create package manager cache metadata"
               exit 1
             fi
 
@@ -91,10 +95,28 @@ jobs:
       tag: "18"
     steps:
       - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: npm
       - core/install_dependencies:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
           cache_version: node18_v7
+      - run:
+          name: Validate npm dependency cache cleanup
+          command: |
+            if [ -d "$HOME/.cache/pipeline-core-orb/dependency-cache" ]; then
+              echo "Expected dependency cache staging root to be removed"
+              exit 1
+            fi
+            NPM_CACHE_DIR=$(npm config get cache)
+            if [ ! -d "$NPM_CACHE_DIR" ]; then
+              echo "Expected npm cache directory to remain after staging cleanup"
+              exit 1
+            fi
+            if [ -f /tmp/node-pkg-manager ]; then
+              echo "Expected package manager cache metadata to be removed"
+              exit 1
+            fi
       - run: cd ~/project/sample && npm run build
   install-dependencies-pnpm-node-18:
     executor:
@@ -102,25 +124,97 @@ jobs:
       tag: "18.20"
     steps:
       - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: pnpm
       - core/install_dependencies:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
           cache_version: node18_v7
+      - run:
+          name: Validate pnpm dependency cache cleanup
+          command: |
+            if [ -d "$HOME/.cache/pipeline-core-orb/dependency-cache" ]; then
+              echo "Expected dependency cache staging root to be removed"
+              exit 1
+            fi
+            PNPM_STORE_DIR=$(pnpm store path)
+            if [ ! -d "$PNPM_STORE_DIR" ]; then
+              echo "Expected pnpm store directory to remain after staging cleanup"
+              exit 1
+            fi
+            if [ -f /tmp/node-pkg-manager ]; then
+              echo "Expected package manager cache metadata to be removed"
+              exit 1
+            fi
       - run: cd ~/project/sample && pnpm run build
   install-dependencies-custom-command:
     executor: core/node
     steps:
       - checkout
-      - core/install_dependencies:
+      - core/ensure_pkg_manager:
           pkg_manager: pnpm@10.5.1
+      - core/install_dependencies:
+          pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
           install_command: pnpm install
           cache_version: v10
+      - run: cd ~/project/sample && pnpm run build
+  install-dependencies-default-pkg-manager-env:
+    executor: core/node
+    steps:
+      - checkout
+      - core/ensure_pkg_manager
+      - core/install_dependencies:
+          pkg_json_dir: ~/project/sample
+          cache_version: default_env_v1
+      - run:
+          name: Validate default package manager dependency cache cleanup
+          command: |
+            if [ -d "$HOME/.cache/pipeline-core-orb/dependency-cache" ]; then
+              echo "Expected dependency cache staging root to be removed"
+              exit 1
+            fi
+            PNPM_STORE_DIR=$(pnpm store path)
+            if [ ! -d "$PNPM_STORE_DIR" ]; then
+              echo "Expected pnpm store directory to remain after staging cleanup"
+              exit 1
+            fi
+            if [ -f /tmp/node-pkg-manager ]; then
+              echo "Expected package manager cache metadata to be removed"
+              exit 1
+            fi
+      - run: cd ~/project/sample && pnpm run build
+  install-dependencies-preinstalled-npm:
+    executor: core/node
+    steps:
+      - checkout
+      - core/install_dependencies:
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample
+          cache_version: external_preinstalled_npm_v1
       - run: cd ~/project/sample && npm run build
+  install-dependencies-externally-installed-pnpm:
+    executor: core/node
+    steps:
+      - checkout
+      - run:
+          name: Install pnpm externally
+          command: sudo npm install -g pnpm@10.5.1
+      - core/install_dependencies:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+          cache_version: external_installed_pnpm_v1
+      - run: cd ~/project/sample && pnpm run build
+
   run-script-npm:
     executor: core/node
     steps:
       - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: npm
+      - core/install_dependencies:
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample
       - core/run_script:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
@@ -133,36 +227,59 @@ jobs:
     executor: core/node
     steps:
       - checkout
-      - core/run_script:
+      - core/ensure_pkg_manager:
           pkg_manager: pnpm@latest-10
+      - core/install_dependencies:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+      - core/run_script:
+          pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
           script: test --json --outputFile=results_pnpm.json
       - run:
           name: Print output file
           working_directory: ~/project/sample
           command: cat results_pnpm.json
-  run-script-skip-install-dependencies:
+  run-script-default-pkg-manager-env:
     executor: core/node
     steps:
       - checkout
+      - core/ensure_pkg_manager
       - core/install_dependencies:
-          pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
+      - core/run_script:
+          pkg_json_dir: ~/project/sample
+          script: test --json --outputFile=results_pnpm_default.json
       - run:
-          name: Unset CURRENT_PKG_MANAGER env
-          command: echo "export CURRENT_PKG_MANAGER=''" >> "${BASH_ENV}"
+          name: Validate run_script package manager metadata ownership
+          command: |
+            if [ -f /tmp/node-pkg-manager ]; then
+              echo "run_script should not create package manager cache metadata"
+              exit 1
+            fi
+      - run:
+          name: Print output file
+          working_directory: ~/project/sample
+          command: cat results_pnpm_default.json
+  run-script-externally-prepared-pnpm:
+    executor: core/node
+    steps:
+      - checkout
+      - run:
+          name: Install pnpm externally
+          command: sudo npm install -g pnpm@10.5.1
+      - run:
+          name: Install dependencies externally
+          command: pnpm install --frozen-lockfile
+          working_directory: ~/project/sample
       - core/run_script:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          skip_install_dependencies: true
-          script: test --json --outputFile=results_pnpm.json
+          script: test --json --outputFile=results_external_pnpm.json
       - run:
-          name: Verfiy install_dependencies was skipped
-          command: |
-            if [[ -n "${CURRENT_PKG_MANAGER}" ]]; then
-              echo "The install_dependencies command was not skipped"
-              exit 1
-            fi
+          name: Print output file
+          working_directory: ~/project/sample
+          command: cat results_external_pnpm.json
 workflows:
   test-deploy:
     jobs:
@@ -182,11 +299,19 @@ workflows:
           filters: *filters
       - install-dependencies-custom-command:
           filters: *filters
+      - install-dependencies-default-pkg-manager-env:
+          filters: *filters
+      - install-dependencies-preinstalled-npm:
+          filters: *filters
+      - install-dependencies-externally-installed-pnpm:
+          filters: *filters
       - run-script-npm:
           filters: *filters
       - run-script-pnpm:
           filters: *filters
-      - run-script-skip-install-dependencies:
+      - run-script-default-pkg-manager-env:
+          filters: *filters
+      - run-script-externally-prepared-pnpm:
           filters: *filters
       - orb-tools/pack:
           filters: *release-filters
@@ -204,8 +329,12 @@ workflows:
             - install-dependencies-npm-node-18
             - install-dependencies-pnpm-node-18
             - install-dependencies-custom-command
+            - install-dependencies-default-pkg-manager-env
+            - install-dependencies-preinstalled-npm
+            - install-dependencies-externally-installed-pnpm
             - run-script-npm
             - run-script-pnpm
-            - run-script-skip-install-dependencies
+            - run-script-default-pkg-manager-env
+            - run-script-externally-prepared-pnpm
           context: orb-publishing
           filters: *release-filters
