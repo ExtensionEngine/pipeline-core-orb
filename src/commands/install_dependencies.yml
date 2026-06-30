@@ -46,6 +46,9 @@ steps:
       working_directory: <<parameters.pkg_json_dir>>
       command: <<include(scripts/check-pkg-json.sh)>>
   - run:
+      name: Write Node.js version cache metadata
+      command: <<include(scripts/write-node-version-cache-metadata.sh)>>
+  - run:
       name: Write package manager cache metadata
       command: <<include(scripts/write-pkg-manager-cache-metadata.sh)>>
   - run:
@@ -54,8 +57,8 @@ steps:
       command: <<include(scripts/process-lockfile.sh)>>
   - restore_cache:
       keys:
-        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-lockfile" }}
-        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-pkg-manager" }}-
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-lockfile" }}
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-
   - run:
       name: Restore dependency cache
       environment:
@@ -73,7 +76,7 @@ steps:
         PARAM_STR_CACHE_MODE: prepare
       command: <<include(scripts/manage-dependency-cache.sh)>>
   - save_cache:
-      key: node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-lockfile" }}
+      key: node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-lockfile" }}
       paths:
         - ~/.cache/pipeline-core-orb/dependency-cache
   - run:
@@ -83,4 +86,4 @@ steps:
       command: <<include(scripts/manage-dependency-cache.sh)>>
   - run:
       name: Remove temporary dependency metadata
-      command: rm -f /tmp/node-lockfile /tmp/node-pkg-manager
+      command: rm -f /tmp/node-lockfile /tmp/node-pkg-manager /tmp/node-version

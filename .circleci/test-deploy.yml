@@ -88,6 +88,10 @@ jobs:
               echo "ensure_pkg_manager should not create package manager cache metadata"
               exit 1
             fi
+            if [ -f /tmp/node-version ]; then
+              echo "ensure_pkg_manager should not create Node.js version cache metadata"
+              exit 1
+            fi
 
   install-dependencies-npm-node-18:
     executor:
@@ -117,6 +121,10 @@ jobs:
               echo "Expected package manager cache metadata to be removed"
               exit 1
             fi
+            if [ -f /tmp/node-version ]; then
+              echo "Expected Node.js version cache metadata to be removed"
+              exit 1
+            fi
       - run: cd ~/project/sample && npm run build
   install-dependencies-pnpm-node-18:
     executor:
@@ -144,6 +152,10 @@ jobs:
             fi
             if [ -f /tmp/node-pkg-manager ]; then
               echo "Expected package manager cache metadata to be removed"
+              exit 1
+            fi
+            if [ -f /tmp/node-version ]; then
+              echo "Expected Node.js version cache metadata to be removed"
               exit 1
             fi
       - run: cd ~/project/sample && pnpm run build
@@ -181,6 +193,10 @@ jobs:
             fi
             if [ -f /tmp/node-pkg-manager ]; then
               echo "Expected package manager cache metadata to be removed"
+              exit 1
+            fi
+            if [ -f /tmp/node-version ]; then
+              echo "Expected Node.js version cache metadata to be removed"
               exit 1
             fi
       - run: cd ~/project/sample && pnpm run build
@@ -254,10 +270,14 @@ jobs:
           script: test
           script_args: --json --outputFile=results_pnpm_default.json
       - run:
-          name: Validate run_script package manager metadata ownership
+          name: Validate run_script metadata ownership
           command: |
             if [ -f /tmp/node-pkg-manager ]; then
               echo "run_script should not create package manager cache metadata"
+              exit 1
+            fi
+            if [ -f /tmp/node-version ]; then
+              echo "run_script should not create Node.js version cache metadata"
               exit 1
             fi
       - run:
