@@ -387,6 +387,45 @@ workflows:
           filters: *filters
       - run-script-pnpm-workspace:
           filters: *filters
+      - core/install_and_run:
+          name: install-and-run-npm
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample
+          script: test
+          script_args: --json --outputFile=results_install_and_run_npm.json
+          filters: *filters
+      - core/install_and_run:
+          name: install-and-run-default-pkg-manager-env
+          pkg_json_dir: ~/project/sample
+          script: test
+          script_args: --json --outputFile=results_install_and_run_default.json
+          pre_install_steps:
+            - run:
+                name: Validate pre-install hook placement
+                command: |
+                  if ! command -v pnpm >/dev/null 2>&1; then
+                    echo "Expected pnpm to be available before dependency installation"
+                    exit 1
+                  fi
+                  if [ -d ~/project/sample/node_modules ]; then
+                    echo "Expected dependencies not to be installed before pre-install steps"
+                    exit 1
+                  fi
+                  echo "pre-install" > /tmp/install-and-run-hook-order
+          post_install_steps:
+            - run:
+                name: Validate post-install hook placement
+                command: |
+                  if [ ! -d ~/project/sample/node_modules ]; then
+                    echo "Expected dependencies to be installed before post-install steps"
+                    exit 1
+                  fi
+                  if [ "$(cat /tmp/install-and-run-hook-order)" != "pre-install" ]; then
+                    echo "Expected pre-install hook to run before post-install hook"
+                    exit 1
+                  fi
+                  rm -f /tmp/install-and-run-hook-order
+          filters: *filters
       - orb-tools/pack:
           filters: *release-filters
       - orb-tools/publish:
@@ -412,5 +451,7 @@ workflows:
             - run-script-externally-prepared-pnpm
             - run-script-npm-workspace
             - run-script-pnpm-workspace
+            - install-and-run-npm
+            - install-and-run-default-pkg-manager-env
           context: orb-publishing
           filters: *release-filters

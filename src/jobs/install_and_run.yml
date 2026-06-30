@@ -1,0 +1,99 @@
+description: >
+  Ensure a package manager, install dependencies, and run a package.json script in one reusable job.
+
+executor:
+  name: node
+  tag: <<parameters.node_tag>>
+  resource_class: <<parameters.resource_class>>
+
+parameters:
+  node_tag:
+    type: string
+    default: lts
+    description: >
+      Choose a specific cimg/node image tag for the job executor.
+  resource_class:
+    type: enum
+    enum:
+      ["small", "medium", "medium+", "large", "xlarge", "2xlarge", "2xlarge+"]
+    default: "medium"
+    description: Choose the executor resource class.
+  pkg_manager:
+    type: string
+    default: ""
+    description: |
+      Choose Node.js package manager to ensure and use. Supports npm and pnpm.
+      The package manager may follow the format <name>[@<version|tag>].
+      When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
+  pkg_json_dir:
+    type: string
+    default: "."
+    description: >
+      Path to the directory containing package.json file where dependencies are installed
+      and the package manager should execute the script.
+  install_command:
+    type: string
+    default: ""
+    description: >
+      Custom command to install dependencies. Useful when default commands,
+      "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
+  cache_version:
+    type: string
+    default: "v1"
+    description: Change the default cache version if the cache needs to be cleared for some reason.
+  pre_install_steps:
+    type: steps
+    default: []
+    description: >
+      Optional steps to run after checkout and package-manager setup, but before dependency installation.
+      These steps can rely on the selected package manager being available.
+  post_install_steps:
+    type: steps
+    default: []
+    description: >
+      Optional steps to run after dependency installation, but before running the package.json script.
+      These steps can rely on installed dependencies being available.
+  script:
+    type: string
+    description: >
+      Name of the package.json script to execute.
+  script_args:
+    type: string
+    default: ""
+    description: >
+      Arguments passed to the package.json script. For npm, arguments are passed after an
+      automatically inserted -- separator. For pnpm, arguments are passed directly after
+      the script name; include -- explicitly when the script itself needs that separator.
+      Values are split on whitespace into command arguments.
+  run_options:
+    type: string
+    default: ""
+    description: >
+      Package manager specific options for the run command, including workspace selectors.
+      For npm these options are placed after the script name. For pnpm these options are placed before run.
+      Values are split on whitespace into command arguments.
+  no_output_timeout:
+    type: string
+    default: "10m"
+    description: >
+      Elapsed time the script can run without output.
+      The string is a decimal with unit suffix, such as "20m", "1.25h", "5s".
+
+steps:
+  - checkout
+  - ensure_pkg_manager:
+      pkg_manager: <<parameters.pkg_manager>>
+  - steps: <<parameters.pre_install_steps>>
+  - install_dependencies:
+      pkg_manager: <<parameters.pkg_manager>>
+      pkg_json_dir: <<parameters.pkg_json_dir>>
+      install_command: <<parameters.install_command>>
+      cache_version: <<parameters.cache_version>>
+  - steps: <<parameters.post_install_steps>>
+  - run_script:
+      pkg_manager: <<parameters.pkg_manager>>
+      pkg_json_dir: <<parameters.pkg_json_dir>>
+      script: <<parameters.script>>
+      script_args: <<parameters.script_args>>
+      run_options: <<parameters.run_options>>
+      no_output_timeout: <<parameters.no_output_timeout>>
