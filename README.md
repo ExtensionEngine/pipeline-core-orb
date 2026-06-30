@@ -2,11 +2,13 @@
 
 An orb to facilitate Node.js work within Studion CircleCI pipelines. Inspired by CircleCI Node Orb.\
 Key features:
+
 - Support for pnpm and npm
 - Ensure the specific version/tag of the package manager is installed
 - The default value of the package manager is picked from the environment
 - Install dependencies with caching enabled by default
 - Run scripts defined inside a package.json using a command for better composition
+- Use a streamlined job for common package script workflows
 - Use Docker executor with integrated Infisical for secure secret retrieval
 - Can only run in execution environments with Node.js pre-installed
 

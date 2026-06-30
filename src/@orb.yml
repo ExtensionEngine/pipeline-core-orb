@@ -1,7 +1,7 @@
 version: 2.1
 
 description: >
-  Core commands for Node.js projects: ensure npm or pnpm package managers, install
+  Core commands and jobs for Node.js projects: ensure npm or pnpm package managers, install
   dependencies with caching, and run package.json scripts. Tailored for use within Studion pipelines.
 
 display:

@@ -1,0 +1,25 @@
+description: |
+  Ensure a package manager, install dependencies, and run a package.json script in one reusable job.
+  Use pre_install_steps and post_install_steps when project-specific setup is needed around dependency installation.
+
+usage:
+  version: 2.1
+  orbs:
+    core: studion/core@x.y.z
+  workflows:
+    test_app:
+      jobs:
+        - core/install_and_run:
+            pkg_manager: pnpm@10.5.1
+            pkg_json_dir: ~/project/app
+            script: test
+            script_args: --coverage
+            pre_install_steps:
+              - run:
+                  name: Prepare package manager configuration
+                  command: pnpm config set verify-store-integrity true
+            post_install_steps:
+              - run:
+                  name: Generate application assets
+                  command: pnpm run generate
+                  working_directory: ~/project/app
