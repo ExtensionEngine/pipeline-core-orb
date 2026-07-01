@@ -74,6 +74,8 @@ jobs:
             fi
   ensure-default-pkg-manager-env:
     executor: core/node
+    environment:
+      DEFAULT_PKG_MANAGER: pnpm@next-10
     steps:
       - core/ensure_pkg_manager
       - run:
@@ -173,6 +175,8 @@ jobs:
       - run: cd ~/project/sample && pnpm run build
   install-dependencies-default-pkg-manager-env:
     executor: core/node
+    environment:
+      DEFAULT_PKG_MANAGER: pnpm@next-10
     steps:
       - checkout
       - core/ensure_pkg_manager
@@ -260,6 +264,8 @@ jobs:
           command: cat results_pnpm.json
   run-script-default-pkg-manager-env:
     executor: core/node
+    environment:
+      DEFAULT_PKG_MANAGER: pnpm@next-10
     steps:
       - checkout
       - core/ensure_pkg_manager
@@ -395,10 +401,11 @@ workflows:
           script_args: --json --outputFile=results_install_and_run_npm.json
           filters: *filters
       - core/install_and_run:
-          name: install-and-run-default-pkg-manager-env
+          name: install-and-run-pnpm-with-hooks
+          pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
           script: test
-          script_args: --json --outputFile=results_install_and_run_default.json
+          script_args: --json --outputFile=results_install_and_run_pnpm_hooks.json
           pre_install_steps:
             - run:
                 name: Validate pre-install hook placement
@@ -452,6 +459,6 @@ workflows:
             - run-script-npm-workspace
             - run-script-pnpm-workspace
             - install-and-run-npm
-            - install-and-run-default-pkg-manager-env
+            - install-and-run-pnpm-with-hooks
           context: orb-publishing
           filters: *release-filters
