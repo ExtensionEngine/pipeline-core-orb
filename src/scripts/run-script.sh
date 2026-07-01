@@ -44,4 +44,7 @@ echo 'Executing:'
 
 set -x
 "${CMD[@]}"
+EXIT_STATUS=$?
 set +x
+
+exit "${EXIT_STATUS}"
