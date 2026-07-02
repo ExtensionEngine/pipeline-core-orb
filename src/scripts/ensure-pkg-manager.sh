@@ -19,28 +19,61 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 check_installation() {
-  local installed_version
+  local pkg_manager
   local required_version
-  local tag_regex
-  local tag_mapping
+  local installed_version
 
-  installed_version=$(eval "$1" --version)
+  pkg_manager="$1"
   required_version="$2"
-  tag_regex=$(eval echo "$2":)
-  tag_mapping=$(eval npm dist-tag ls "$1" | grep "${tag_regex}" || true)
+  installed_version=$("${pkg_manager}" --version)
 
-  if [[ -n "${tag_mapping}" ]]; then
-    required_version=$(echo "${tag_mapping}" | awk '{print $2}')
-  fi
-
-  echo "Installed $1 version: ${installed_version}"
-  echo "Required $1 version: ${required_version}"
+  echo "Installed ${pkg_manager} version: ${installed_version}"
+  echo "Required ${pkg_manager} version: ${required_version}"
 
   if [[ "${installed_version}" != "${required_version}" ]]; then
-    echo "Failed to install $1 '${required_version}'"
+    echo "Failed to install ${pkg_manager} version: ${required_version}"
 
     exit 2
   fi
+}
+
+resolve_partial_version() {
+  npm view "$1@$2" version --json | awk '
+    match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { version = substr($0, RSTART, RLENGTH) }
+    END { if (version) print version; else exit 1 }
+  '
+}
+
+resolve_required_version() {
+  local pkg_manager
+  local version_spec
+  local resolved_version
+
+  pkg_manager="$1"
+  version_spec="$2"
+
+  if [[ "${version_spec}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf '%s' "${version_spec}"
+    return 0
+  fi
+
+  resolved_version=$(npm dist-tag ls "${pkg_manager}" | awk -v tag="${version_spec}" '$1 == tag ":" { print $2; found = 1 } END { exit found ? 0 : 1 }')
+
+  if [[ -n "${resolved_version}" ]]; then
+    echo "Resolved ${pkg_manager} dist-tag '${version_spec}' to ${resolved_version}" >&2
+    printf '%s' "${resolved_version}"
+    return 0
+  fi
+
+  if [[ "${version_spec}" =~ ^[0-9]+(\.[0-9]+)?$ ]] && resolved_version=$(resolve_partial_version "${pkg_manager}" "${version_spec}"); then
+    echo "Resolved ${pkg_manager} version '${version_spec}' to ${resolved_version}" >&2
+    printf '%s' "${resolved_version}"
+    return 0
+  fi
+
+  echo "Failed to resolve ${pkg_manager} version/tag '${version_spec}'" >&2
+
+  return 2
 }
 
 change_pnpm_store_dir_and_exit() {
@@ -70,13 +103,17 @@ if [[ "${NAME}" == "npm" ]]; then
   echo "Detected npm $(npm --version)"
 
   if [[ -n "${VERSION}" ]]; then
-    if npm --version | grep "${VERSION}" >/dev/null 2>&1; then
+    if ! REQUIRED_VERSION=$(resolve_required_version "${NAME}" "${VERSION}"); then
+      exit 2
+    fi
+
+    if [[ "$(npm --version)" == "${REQUIRED_VERSION}" ]]; then
       echo "Requested version of npm is already installed"
     else
       echo "Requested version of npm not found, updating detected version"
 
       ${NPM_I_SUDO} npm i -g npm@"${VERSION}"
-      check_installation "${NAME}" "${VERSION}"
+      check_installation "${NAME}" "${REQUIRED_VERSION}"
     fi
 
     exit 0
@@ -88,6 +125,12 @@ if [[ "${NAME}" == "npm" ]]; then
 fi
 
 if [[ "${NAME}" == "pnpm" ]]; then
+  if [[ -n "${VERSION}" ]]; then
+    if ! REQUIRED_VERSION=$(resolve_required_version "${NAME}" "${VERSION}"); then
+      exit 2
+    fi
+  fi
+
   if command -v pnpm >/dev/null 2>&1; then
     echo "Detected pnpm $(pnpm --version)"
 
@@ -95,7 +138,9 @@ if [[ "${NAME}" == "pnpm" ]]; then
       echo "Using detected version of pnpm"
 
       change_pnpm_store_dir_and_exit
-    elif pnpm --version | grep "${VERSION}" >/dev/null 2>&1; then
+    fi
+
+    if [[ "$(pnpm --version)" == "${REQUIRED_VERSION}" ]]; then
       echo "Requested version of pnpm is already installed"
 
       change_pnpm_store_dir_and_exit
@@ -112,12 +157,13 @@ if [[ "${NAME}" == "pnpm" ]]; then
 
   if [[ -z "${VERSION}" ]]; then
     VERSION=$(npm view pnpm version)
+    REQUIRED_VERSION="${VERSION}"
 
     echo "Version not explicitly requested, opting for ${VERSION}"
   fi
 
   ${NPM_I_SUDO} npm i -g pnpm@"${VERSION}"
-  check_installation "${NAME}" "${VERSION}"
+  check_installation "${NAME}" "${REQUIRED_VERSION}"
 
   echo "Setting ~/.pnpm-store as the store directory"
 
