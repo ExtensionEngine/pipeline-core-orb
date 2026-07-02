@@ -356,6 +356,85 @@ jobs:
           name: Clean pnpm workspace script output
           working_directory: ~/project/sample/workspace/packages/app
           command: rm -f workspace-result-pnpm.txt
+  negative-path-validation:
+    executor: core/node
+    steps:
+      - checkout
+      - run:
+          name: Validate expected failure paths
+          command: |
+            assert_status() {
+              local expected_status="$1"
+              local expected_output="$2"
+              local output
+              local status
+
+              shift 2
+
+              set +e
+              output=$("$@" 2>&1)
+              status=$?
+              set -e
+
+              if [ "${status}" -ne "${expected_status}" ]; then
+                echo "Expected status ${expected_status}, got ${status}: $*"
+                echo "Output:"
+                printf '%s\n' "${output}"
+                exit 1
+              fi
+
+              if ! printf '%s\n' "${output}" | grep -Fq "${expected_output}"; then
+                echo "Expected output to contain: ${expected_output}"
+                echo "Actual output:"
+                printf '%s\n' "${output}"
+                exit 1
+              fi
+            }
+
+            TEMP_DIR=$(mktemp -d)
+            trap 'rm -rf "${TEMP_DIR}" /tmp/node-lockfile' EXIT
+
+            mkdir -p "${TEMP_DIR}/missing-package-json"
+            mkdir -p "${TEMP_DIR}/missing-lockfile"
+            mkdir -p "${TEMP_DIR}/failing-script"
+
+            printf '{"scripts":{}}\n' > "${TEMP_DIR}/missing-lockfile/package.json"
+            printf '{"scripts":{"fail":"exit 42"}}\n' > "${TEMP_DIR}/failing-script/package.json"
+
+            assert_status 1 "Package manager 'yarn' is not supported" \
+              env PARAM_STR_PKG_MANAGER=yarn BASH_ENV="${TEMP_DIR}/bash_env" \
+              bash src/scripts/export-pkg-manager.sh
+
+            assert_status 1 "Package manager 'missing-pkg-manager-for-negative-test' is not available" \
+              env CURRENT_PKG_MANAGER=missing-pkg-manager-for-negative-test \
+              bash src/scripts/validate-pkg-manager.sh
+
+            assert_status 1 "File package.json not found" \
+              bash -c 'cd "$1" && bash "$2"' _ \
+              "${TEMP_DIR}/missing-package-json" \
+              "${PWD}/src/scripts/check-pkg-json.sh"
+
+            assert_status 1 "The lockfile not found!" \
+              bash -c 'cd "$1" && CURRENT_PKG_MANAGER=npm bash "$2"' _ \
+              "${TEMP_DIR}/missing-lockfile" \
+              "${PWD}/src/scripts/process-lockfile.sh"
+
+            assert_status 1 "At least Node.js v18.20 is required!" \
+              bash -c 'node() { printf "v18.19.0\n"; }; source "$1"' _ \
+              "${PWD}/src/scripts/check-node-version.sh"
+
+            assert_status 1 "Unable to parse Node.js version: version 20" \
+              bash -c 'node() { printf "version 20\n"; }; source "$1"' _ \
+              "${PWD}/src/scripts/check-node-version.sh"
+
+            assert_status 42 "Running package.json script 'fail'" \
+              bash -c 'cd "$1" && CURRENT_PKG_MANAGER=npm PARAM_STR_SCRIPT=fail PARAM_STR_SCRIPT_ARGS= PARAM_STR_RUN_OPTIONS= bash "$2"' _ \
+              "${TEMP_DIR}/failing-script" \
+              "${PWD}/src/scripts/run-script.sh"
+
+            assert_status 43 "Running custom install command" \
+              env CURRENT_PKG_MANAGER=npm PARAM_STR_INSTALL_COMMAND='exit 43' \
+              bash src/scripts/install-dependencies.sh
 workflows:
   test-deploy:
     jobs:
@@ -392,6 +471,8 @@ workflows:
       - run-script-npm-workspace:
           filters: *filters
       - run-script-pnpm-workspace:
+          filters: *filters
+      - negative-path-validation:
           filters: *filters
       - core/install_and_run:
           name: install-and-run-npm
@@ -458,6 +539,7 @@ workflows:
             - run-script-externally-prepared-pnpm
             - run-script-npm-workspace
             - run-script-pnpm-workspace
+            - negative-path-validation
             - install-and-run-npm
             - install-and-run-pnpm-with-hooks
           context: orb-publishing
