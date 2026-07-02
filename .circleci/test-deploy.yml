@@ -20,9 +20,21 @@ jobs:
     executor: core/node
     steps:
       - core/ensure_pkg_manager:
-          pkg_manager: npm@latest
+          pkg_manager: npm@10.5.1
       - run:
           name: Validate version
+          command: |
+            if [ "$(npm --version)" != "10.5.1" ]; then
+              echo "npm version 10.5.1 not found"
+              exit 1
+            fi
+  ensure-npm-latest-compatibility:
+    executor: core/node
+    steps:
+      - core/ensure_pkg_manager:
+          pkg_manager: npm@latest
+      - run:
+          name: Validate latest version compatibility
           command: |
             NPM_LATEST_VERSION=$(npm view npm version)
             if ! npm --version | grep -q "$NPM_LATEST_VERSION"; then
@@ -33,9 +45,21 @@ jobs:
     executor: core/node_secrets
     steps:
       - core/ensure_pkg_manager:
-          pkg_manager: pnpm@latest
+          pkg_manager: pnpm@10.5.1
       - run:
           name: Validate version
+          command: |
+            if [ "$(pnpm --version)" != "10.5.1" ]; then
+              echo "pnpm version 10.5.1 not found"
+              exit 1
+            fi
+  ensure-pnpm-latest-compatibility:
+    executor: core/node_secrets
+    steps:
+      - core/ensure_pkg_manager:
+          pkg_manager: pnpm@latest
+      - run:
+          name: Validate latest version compatibility
           command: |
             PNPM_LATEST_VERSION=$(npm view pnpm version)
             if ! pnpm --version | grep -q "$PNPM_LATEST_VERSION"; then
@@ -75,15 +99,14 @@ jobs:
   ensure-default-pkg-manager-env:
     executor: core/node
     environment:
-      DEFAULT_PKG_MANAGER: pnpm@next-10
+      DEFAULT_PKG_MANAGER: pnpm@10.5.1
     steps:
       - core/ensure_pkg_manager
       - run:
           name: Validate version and metadata ownership
           command: |
-            PNPM_NEXT_10_VERSION=$(npm view pnpm dist-tags.next-10)
-            if ! pnpm --version | grep -q "$PNPM_NEXT_10_VERSION"; then
-              echo "pnpm version $PNPM_NEXT_10_VERSION not found"
+            if [ "$(pnpm --version)" != "10.5.1" ]; then
+              echo "pnpm version 10.5.1 not found"
               exit 1
             fi
             if [ -f /tmp/node-pkg-manager ]; then
@@ -135,7 +158,7 @@ jobs:
     steps:
       - checkout
       - core/ensure_pkg_manager:
-          pkg_manager: pnpm
+          pkg_manager: pnpm@10.5.1
       - core/install_dependencies:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
@@ -176,7 +199,7 @@ jobs:
   install-dependencies-default-pkg-manager-env:
     executor: core/node
     environment:
-      DEFAULT_PKG_MANAGER: pnpm@next-10
+      DEFAULT_PKG_MANAGER: pnpm@10.5.1
     steps:
       - checkout
       - core/ensure_pkg_manager
@@ -249,7 +272,7 @@ jobs:
     steps:
       - checkout
       - core/ensure_pkg_manager:
-          pkg_manager: pnpm@latest-10
+          pkg_manager: pnpm@10.5.1
       - core/install_dependencies:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
@@ -262,10 +285,28 @@ jobs:
           name: Print output file
           working_directory: ~/project/sample
           command: cat results_pnpm.json
+  run-script-pnpm-latest-10-compatibility:
+    executor: core/node
+    steps:
+      - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: pnpm@latest-10
+      - core/install_dependencies:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+      - core/run_script:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+          script: test
+          script_args: --json --outputFile=results_pnpm_latest_10.json
+      - run:
+          name: Print output file
+          working_directory: ~/project/sample
+          command: cat results_pnpm_latest_10.json
   run-script-default-pkg-manager-env:
     executor: core/node
     environment:
-      DEFAULT_PKG_MANAGER: pnpm@next-10
+      DEFAULT_PKG_MANAGER: pnpm@10.5.1
     steps:
       - checkout
       - core/ensure_pkg_manager
@@ -337,7 +378,7 @@ jobs:
     steps:
       - checkout
       - core/ensure_pkg_manager:
-          pkg_manager: pnpm
+          pkg_manager: pnpm@10.5.1
       - core/run_script:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample/workspace
@@ -440,7 +481,11 @@ workflows:
     jobs:
       - ensure-npm-version:
           filters: *filters
+      - ensure-npm-latest-compatibility:
+          filters: *filters
       - ensure-pnpm-version:
+          filters: *filters
+      - ensure-pnpm-latest-compatibility:
           filters: *filters
       - ensure-pnpm-fresh-install:
           filters: *filters
@@ -463,6 +508,8 @@ workflows:
       - run-script-npm:
           filters: *filters
       - run-script-pnpm:
+          filters: *filters
+      - run-script-pnpm-latest-10-compatibility:
           filters: *filters
       - run-script-default-pkg-manager-env:
           filters: *filters
@@ -523,7 +570,9 @@ workflows:
           requires:
             - orb-tools/pack
             - ensure-npm-version
+            - ensure-npm-latest-compatibility
             - ensure-pnpm-version
+            - ensure-pnpm-latest-compatibility
             - ensure-pnpm-fresh-install
             - ensure-pnpm-machine-install
             - ensure-default-pkg-manager-env
@@ -535,6 +584,7 @@ workflows:
             - install-dependencies-externally-installed-pnpm
             - run-script-npm
             - run-script-pnpm
+            - run-script-pnpm-latest-10-compatibility
             - run-script-default-pkg-manager-env
             - run-script-externally-prepared-pnpm
             - run-script-npm-workspace
