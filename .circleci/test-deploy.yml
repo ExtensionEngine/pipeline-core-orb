@@ -440,7 +440,7 @@ jobs:
             }
 
             TEMP_DIR=$(mktemp -d)
-            trap 'rm -rf "${TEMP_DIR}" /tmp/node-lockfile' EXIT
+            trap 'rm -rf "${TEMP_DIR}" /tmp/node-lockfile /tmp/node-pkg-manager' EXIT
 
             mkdir -p "${TEMP_DIR}/missing-package-json"
             mkdir -p "${TEMP_DIR}/missing-lockfile"
@@ -456,6 +456,14 @@ jobs:
             assert_status 1 "Package manager 'missing-pkg-manager-for-negative-test' is not available" \
               env CURRENT_PKG_MANAGER=missing-pkg-manager-for-negative-test \
               bash src/scripts/validate-pkg-manager.sh
+
+            assert_status 1 "Cannot write package manager cache metadata because pnpm version lookup failed" \
+              bash -c 'pnpm() { return 1; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
+              "${PWD}/src/scripts/write-pkg-manager-cache-metadata.sh"
+
+            assert_status 1 "Cannot parse package manager version: version 10" \
+              bash -c 'pnpm() { printf "version 10\n"; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
+              "${PWD}/src/scripts/write-pkg-manager-cache-metadata.sh"
 
             assert_status 1 "File package.json not found" \
               bash -c 'cd "$1" && bash "$2"' _ \
