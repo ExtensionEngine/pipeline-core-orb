@@ -24,6 +24,8 @@ parameters:
     description: |
       Custom shell command to install dependencies. Useful when default commands,
       "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
+      A package manager matching lockfile is still required and is processed before
+      dependency installation so cache keys remain lockfile-based.
       The command is executed with Bash and should not include secrets in arguments,
       because command arguments may be visible in CI logs and process metadata.
   cache_version:
