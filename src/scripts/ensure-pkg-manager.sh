@@ -76,6 +76,37 @@ resolve_required_version() {
   return 2
 }
 
+validate_pnpm_cleanup_path() {
+  local label
+  local path
+
+  label="$1"
+  path="$2"
+
+  if [[ "${path}" == "/" || "${path}" == "${HOME}" || "${path}" == "${HOME}/" ]]; then
+    echo "Refusing to remove unsafe ${label} path: ${path}" >&2
+    exit 2
+  fi
+
+  if [[ -n "${path}" && "${path}" != *pnpm* ]]; then
+    echo "Refusing to remove ${label} path without pnpm marker: ${path}" >&2
+    exit 2
+  fi
+}
+
+remove_pnpm_cleanup_path() {
+  local label
+  local path
+
+  label="$1"
+  path="$2"
+
+  validate_pnpm_cleanup_path "${label}" "${path}"
+  echo "Removing ${label}: ${path}"
+
+  ${SUDO} rm -rf "${path}"
+}
+
 change_pnpm_store_dir_and_exit() {
   local current_store_dir
   local target_store_dir
@@ -88,7 +119,7 @@ change_pnpm_store_dir_and_exit() {
 
     set -x
     pnpm config set store-dir "${target_store_dir}"
-    ${SUDO} rm -rf "${current_store_dir}"
+    remove_pnpm_cleanup_path "pnpm store" "${current_store_dir}"
     set +x
   fi
 
@@ -148,8 +179,8 @@ if [[ "${NAME}" == "pnpm" ]]; then
 
     echo "Requested version of pnpm not found, removing detected version"
 
-    ${SUDO} rm -rf "$(pnpm store path)" >/dev/null 2>&1
-    ${SUDO} rm -rf "${PNPM_HOME}" >/dev/null 2>&1
+    remove_pnpm_cleanup_path "pnpm store" "$(pnpm store path)"
+    remove_pnpm_cleanup_path "PNPM_HOME" "${PNPM_HOME}"
     ${SUDO} npm rm -g pnpm >/dev/null 2>&1
   else
     echo "Did not detect pnpm, proceeding with installation"
