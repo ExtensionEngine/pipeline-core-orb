@@ -193,8 +193,15 @@ jobs:
       - core/install_dependencies:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          install_command: pnpm install
+          install_command: pnpm install | tee /tmp/pnpm-custom-install.log
           cache_version: v10
+      - run:
+          name: Validate custom install command output
+          command: |
+            if [ ! -s /tmp/pnpm-custom-install.log ]; then
+              echo "Expected custom install pipeline output to be captured"
+              exit 1
+            fi
       - run: cd ~/project/sample && pnpm run build
   install-dependencies-default-pkg-manager-env:
     executor: core/node
@@ -475,6 +482,10 @@ jobs:
 
             assert_status 43 "Running custom install command" \
               env CURRENT_PKG_MANAGER=npm PARAM_STR_INSTALL_COMMAND='exit 43' \
+              bash src/scripts/install-dependencies.sh
+
+            assert_status 1 "Running custom install command" \
+              env CURRENT_PKG_MANAGER=npm PARAM_STR_INSTALL_COMMAND='false | true' \
               bash src/scripts/install-dependencies.sh
 workflows:
   test-deploy:
