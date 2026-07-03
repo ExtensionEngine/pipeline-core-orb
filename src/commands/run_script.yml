@@ -27,18 +27,20 @@ parameters:
   script_args:
     type: string
     default: ""
-    description: >
+    description: |
       Arguments passed to the package.json script. For npm, arguments are passed after an
       automatically inserted -- separator. For pnpm, arguments are passed directly after
       the script name; include -- explicitly when the script itself needs that separator.
-      Values are split on whitespace into command arguments.
+      The value is split on shell whitespace into command arguments; quoted substrings are
+      not preserved as grouped arguments.
   run_options:
     type: string
     default: ""
-    description: >
+    description: |
       Package manager specific options for the run command, including workspace selectors.
       For npm these options are placed after the script name. For pnpm these options are placed before run.
-      Values are split on whitespace into command arguments.
+      The value is split on shell whitespace into command arguments; quoted substrings are
+      not preserved as grouped arguments.
   no_output_timeout:
     type: string
     default: "10m"
