@@ -404,6 +404,27 @@ jobs:
           name: Clean pnpm workspace script output
           working_directory: ~/project/sample/workspace/packages/app
           command: rm -f workspace-result-pnpm.txt
+  install-infisical:
+    executor: core/ubuntu
+    steps:
+      - core/install_infisical
+      - run:
+          name: Validate Infisical CLI installation
+          command: |
+            if ! infisical --version | grep -Eq 'v?[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "Infisical CLI did not report a semantic version"
+              exit 1
+            fi
+      - core/install_infisical:
+          version: v0.43.119
+      - run:
+          name: Validate pinned Infisical CLI installation
+          command: |
+            if ! infisical --version | grep -Eq 'v?0\.43\.119'; then
+              echo "Infisical CLI version 0.43.119 not found"
+              infisical --version
+              exit 1
+            fi
   negative-path-validation:
     executor: core/node
     steps:
@@ -546,6 +567,8 @@ workflows:
           filters: *filters
       - run-script-pnpm-workspace:
           filters: *filters
+      - install-infisical:
+          filters: *filters
       - negative-path-validation:
           filters: *filters
       - core/install_and_run:
@@ -616,6 +639,7 @@ workflows:
             - run-script-externally-prepared-pnpm
             - run-script-npm-workspace
             - run-script-pnpm-workspace
+            - install-infisical
             - negative-path-validation
             - install-and-run-npm
             - install-and-run-pnpm-with-hooks
