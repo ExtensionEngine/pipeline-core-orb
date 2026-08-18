@@ -1,0 +1,21 @@
+description: |
+  Install the Infisical CLI on Linux or macOS (Darwin) platforms using either amd64 or arm64 architecture.
+  Omit version to use the latest release, or pin a semantic version, with or without a leading v, for reproducible builds.
+
+usage:
+  version: 2.1
+  orbs:
+    core: studion/core@x.y.z
+  jobs:
+    inject_secrets:
+      executor: core/node
+      steps:
+        - checkout
+        - core/install_infisical:
+            version: 0.41.111
+        - run: infisical login
+        - run: infisical run -- npm run prod
+  workflows:
+    inject_secrets:
+      jobs:
+        - inject_secrets
