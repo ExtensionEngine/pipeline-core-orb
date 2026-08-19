@@ -52,7 +52,8 @@ restore_cache() {
   echo "Dependency cache staging path: ${STAGED_CACHE_DIR}"
   echo "Dependency cache target: ${CACHE_PATH}"
 
-  mkdir -p "${CACHE_PATH}"
+  rm -rf "${CACHE_PATH}"
+  # mkdir -p "${CACHE_PATH}"
 
   if [[ ! -d "${STAGED_CACHE_DIR}" ]]; then
     echo "No staged ${CURRENT_PKG_MANAGER} cache found; continuing without restored dependency cache"
@@ -67,7 +68,8 @@ restore_cache() {
   fi
 
   echo "Copying staged ${CURRENT_PKG_MANAGER} cache into package manager cache path"
-  cp -a "${STAGED_CACHE_DIR}/." "${CACHE_PATH}/"
+  # cp -a "${STAGED_CACHE_DIR}/." "${CACHE_PATH}/"
+  mv "${STAGED_CACHE_DIR}" "${CACHE_PATH}"
 }
 
 prepare_cache() {
@@ -77,7 +79,7 @@ prepare_cache() {
   echo "Dependency cache staging path: ${STAGED_CACHE_DIR}"
 
   rm -rf "${CACHE_ROOT}"
-  mkdir -p "${STAGED_CACHE_DIR}"
+  # mkdir -p "${STAGED_CACHE_DIR}"
 
   if [[ ! -d "${CACHE_PATH}" ]]; then
     echo "Dependency cache source does not exist; saving empty staged cache"
@@ -92,12 +94,14 @@ prepare_cache() {
   fi
 
   echo "Copying ${CURRENT_PKG_MANAGER} cache into staging path"
-  cp -a "${CACHE_PATH}/." "${STAGED_CACHE_DIR}/"
+  # cp -a "${CACHE_PATH}/." "${STAGED_CACHE_DIR}/"
+  mv "${CACHE_PATH}" "${STAGED_CACHE_DIR}"
 }
 
 cleanup_cache() {
   echo "Removing dependency cache staging root: ${CACHE_ROOT}"
-  rm -rf "${CACHE_ROOT}"
+  # rm -rf "${CACHE_ROOT}"
+  mv "${STAGED_CACHE_DIR}" "${CACHE_PATH}"
 }
 
 validate_cache_mode
