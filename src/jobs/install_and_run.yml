@@ -41,6 +41,15 @@ parameters:
     type: string
     default: "v1"
     description: Change the default cache version if the cache needs to be cleared for some reason.
+  cache_path:
+    type: string
+    default: ~/.cache/pipeline-core-orb/dependency-cache
+    description: |
+      Exact directory restored and saved for the selected package manager's dependency cache or store.
+      Supports absolute paths and current-user home paths beginning with ~/; paths are canonicalized
+      before use and must not resolve to the filesystem root or current user's home directory. It is
+      used only during dependency installation. Jobs that install with both npm and pnpm must provide
+      separate cache_path values for each manager.
   pre_install_steps:
     type: steps
     default: []
@@ -89,6 +98,7 @@ steps:
       pkg_json_dir: <<parameters.pkg_json_dir>>
       install_command: <<parameters.install_command>>
       cache_version: <<parameters.cache_version>>
+      cache_path: <<parameters.cache_path>>
   - steps: <<parameters.post_install_steps>>
   - run_script:
       pkg_manager: <<parameters.pkg_manager>>

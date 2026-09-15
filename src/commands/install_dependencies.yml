@@ -32,6 +32,15 @@ parameters:
     type: string
     default: "v1"
     description: Change the default cache version if the cache needs to be cleared for some reason.
+  cache_path:
+    type: string
+    default: ~/.cache/pipeline-core-orb/dependency-cache
+    description: |
+      Exact directory restored and saved for the selected package manager's dependency cache or store.
+      Supports absolute paths and current-user home paths beginning with ~/; paths are canonicalized
+      before use and must not resolve to the filesystem root or current user's home directory. It is
+      used only during this dependency installation and is not persisted in package-manager configuration.
+      Jobs that install with both npm and pnpm must provide separate cache_path values for each manager.
 
 steps:
   - run:
@@ -59,35 +68,31 @@ steps:
       name: Process lockfile
       working_directory: <<parameters.pkg_json_dir>>
       command: <<include(scripts/process-lockfile.sh)>>
+  - run:
+      name: Resolve dependency cache path
+      environment:
+        PARAM_STR_CACHE_PATH: <<parameters.cache_path>>
+      command: <<include(scripts/resolve-dependency-cache-path.sh)>>
   - restore_cache:
       keys:
-        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-lockfile" }}
-        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-
-  - run:
-      name: Restore dependency cache
-      environment:
-        PARAM_STR_CACHE_MODE: restore
-      command: <<include(scripts/manage-dependency-cache.sh)>>
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-cache-path" }}-{{ checksum "/tmp/node-lockfile" }}
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-cache-path" }}-
   - run:
       name: Install dependencies
       working_directory: <<parameters.pkg_json_dir>>
       environment:
+        PARAM_STR_CACHE_PATH: <<parameters.cache_path>>
         PARAM_STR_INSTALL_COMMAND: <<parameters.install_command>>
       command: <<include(scripts/install-dependencies.sh)>>
   - run:
-      name: Prepare dependency cache
+      name: Revalidate dependency cache path
       environment:
-        PARAM_STR_CACHE_MODE: prepare
-      command: <<include(scripts/manage-dependency-cache.sh)>>
+        PARAM_STR_CACHE_PATH: <<parameters.cache_path>>
+      command: <<include(scripts/resolve-dependency-cache-path.sh)>>
   - save_cache:
-      key: node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-lockfile" }}
+      key: node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-cache-path" }}-{{ checksum "/tmp/node-lockfile" }}
       paths:
-        - ~/.cache/pipeline-core-orb/dependency-cache
-  - run:
-      name: Remove dependency cache staging
-      environment:
-        PARAM_STR_CACHE_MODE: cleanup
-      command: <<include(scripts/manage-dependency-cache.sh)>>
+        - <<parameters.cache_path>>
   - run:
       name: Remove temporary dependency metadata
-      command: rm -f /tmp/node-lockfile /tmp/node-pkg-manager /tmp/node-version
+      command: <<include(scripts/remove-dependency-cache-metadata.sh)>>

@@ -54,6 +54,7 @@ resolve_required_version() {
 
   if [[ "${version_spec}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     printf '%s' "${version_spec}"
+
     return 0
   fi
 
@@ -62,12 +63,14 @@ resolve_required_version() {
   if [[ -n "${resolved_version}" ]]; then
     echo "Resolved ${pkg_manager} dist-tag '${version_spec}' to ${resolved_version}" >&2
     printf '%s' "${resolved_version}"
+
     return 0
   fi
 
   if [[ "${version_spec}" =~ ^[0-9]+(\.[0-9]+)?$ ]] && resolved_version=$(resolve_partial_version "${pkg_manager}" "${version_spec}"); then
     echo "Resolved ${pkg_manager} version '${version_spec}' to ${resolved_version}" >&2
     printf '%s' "${resolved_version}"
+
     return 0
   fi
 
@@ -85,11 +88,13 @@ validate_pnpm_cleanup_path() {
 
   if [[ "${path}" == "/" || "${path}" == "${HOME}" || "${path}" == "${HOME}/" ]]; then
     echo "Refusing to remove unsafe ${label} path: ${path}" >&2
+
     exit 2
   fi
 
   if [[ -n "${path}" && "${path}" != *pnpm* ]]; then
     echo "Refusing to remove ${label} path without pnpm marker: ${path}" >&2
+
     exit 2
   fi
 }
@@ -102,28 +107,12 @@ remove_pnpm_cleanup_path() {
   path="$2"
 
   validate_pnpm_cleanup_path "${label}" "${path}"
-  echo "Removing ${label}: ${path}"
 
-  ${SUDO} rm -rf "${path}"
-}
+  if [[ -n "${path}" ]]; then
+    echo "Removing ${label}: ${path}"
 
-change_pnpm_store_dir_and_exit() {
-  local current_store_dir
-  local target_store_dir
-
-  current_store_dir=$(pnpm store path)
-  target_store_dir="${HOME}/.pnpm-store"
-
-  if [[ "${current_store_dir}" != "${target_store_dir}" ]]; then
-    echo "Changing the pnpm store directory"
-
-    set -x
-    pnpm config set store-dir "${target_store_dir}"
-    remove_pnpm_cleanup_path "pnpm store" "${current_store_dir}"
-    set +x
+    ${SUDO} rm -rf "${path}"
   fi
-
-  exit 0
 }
 
 echo "Starting to ensure '${NAME}' is set for usage"
@@ -168,13 +157,13 @@ if [[ "${NAME}" == "pnpm" ]]; then
     if [[ -z "${VERSION}" ]]; then
       echo "Using detected version of pnpm"
 
-      change_pnpm_store_dir_and_exit
+      exit 0
     fi
 
     if [[ "$(pnpm --version)" == "${REQUIRED_VERSION}" ]]; then
       echo "Requested version of pnpm is already installed"
 
-      change_pnpm_store_dir_and_exit
+      exit 0
     fi
 
     echo "Requested version of pnpm not found, removing detected version"
@@ -182,6 +171,7 @@ if [[ "${NAME}" == "pnpm" ]]; then
     remove_pnpm_cleanup_path "pnpm store" "$(pnpm store path)"
     remove_pnpm_cleanup_path "PNPM_HOME" "${PNPM_HOME}"
     ${SUDO} npm rm -g pnpm >/dev/null 2>&1
+    hash -r
   else
     echo "Did not detect pnpm, proceeding with installation"
   fi
@@ -194,11 +184,8 @@ if [[ "${NAME}" == "pnpm" ]]; then
   fi
 
   ${NPM_I_SUDO} npm i -g pnpm@"${VERSION}"
+  hash -r
   check_installation "${NAME}" "${REQUIRED_VERSION}"
-
-  echo "Setting ~/.pnpm-store as the store directory"
-
-  pnpm config set store-dir ~/.pnpm-store
 
   exit 0
 fi
