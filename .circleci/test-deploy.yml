@@ -81,6 +81,57 @@ jobs:
               echo "pnpm version $PNPM_LATEST_VERSION not found"
               exit 1
             fi
+  ensure-pnpm-removes-existing-installation:
+    executor: core/node
+    steps:
+      - run:
+          name: Prepare standalone pnpm path shadow
+          command: |
+            export PNPM_HOME="${HOME}/.pnpm-home-shadow"
+            mkdir -p "${PNPM_HOME}" "${HOME}/.pnpm-store-shadow"
+            printf 'store sentinel\n' > "${HOME}/.pnpm-store-shadow/sentinel"
+            {
+              printf '%s\n' '#!/bin/sh'
+              printf '%s\n' 'if [ "$1" = "--version" ]; then'
+              printf '%s\n' "  printf '9.0.0\\n'"
+              printf '%s\n' '  exit 0'
+              printf '%s\n' 'fi'
+              printf '%s\n' 'if [ "$1" = "store" ] && [ "$2" = "path" ]; then'
+              printf '%s\n' '  printf "%s\\n" "${HOME}/.pnpm-store-shadow"'
+              printf '%s\n' '  exit 0'
+              printf '%s\n' 'fi'
+              printf '%s\n' 'printf "Unexpected standalone pnpm invocation: %s\\n" "$*" >&2'
+              printf '%s\n' 'exit 1'
+            } > "${PNPM_HOME}/pnpm"
+            chmod +x "${PNPM_HOME}/pnpm"
+            {
+              printf 'export PNPM_HOME=%q\n' "${PNPM_HOME}"
+              printf 'export PATH=%q:"$PATH"\n' "${PNPM_HOME}"
+            } >> "${BASH_ENV}"
+      - core/ensure_pkg_manager:
+          pkg_manager: pnpm@10.5.1
+      - run:
+          name: Validate pnpm replacement removes existing installation
+          command: |
+            EXPECTED_PNPM="$(npm prefix -g)/bin/pnpm"
+            if [ "$(command -v pnpm)" != "${EXPECTED_PNPM}" ]; then
+              echo "Expected npm-installed pnpm to take precedence"
+              echo "Expected: ${EXPECTED_PNPM}"
+              echo "Actual: $(command -v pnpm)"
+              exit 1
+            fi
+            if [ "$(pnpm --version)" != "10.5.1" ]; then
+              echo "Expected npm-installed pnpm version 10.5.1"
+              exit 1
+            fi
+            if [ -e "${PNPM_HOME}" ]; then
+              echo "Expected existing PNPM_HOME to be removed"
+              exit 1
+            fi
+            if [ -e "${HOME}/.pnpm-store-shadow" ]; then
+              echo "Expected existing pnpm store to be removed"
+              exit 1
+            fi
   ensure-pnpm-machine-install:
     machine:
       image: ubuntu-2404:current
@@ -129,17 +180,14 @@ jobs:
       - core/install_dependencies:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
-          cache_version: node18_v7
+          cache_version: node18_v8
+          cache_path: ~/project/.orb-npm-cache
       - run:
-          name: Validate npm dependency cache cleanup
+          name: Validate npm direct dependency cache
           command: |
-            if [ -d "$HOME/.cache/pipeline-core-orb/dependency-cache" ]; then
-              echo "Expected dependency cache staging root to be removed"
-              exit 1
-            fi
-            NPM_CACHE_DIR=$(npm config get cache)
-            if [ ! -d "$NPM_CACHE_DIR" ]; then
-              echo "Expected npm cache directory to remain after staging cleanup"
+            NPM_CACHE_DIR="$HOME/project/.orb-npm-cache"
+            if [ ! -d "$NPM_CACHE_DIR/_cacache" ]; then
+              echo "Expected npm direct dependency cache to be populated"
               exit 1
             fi
             if [ -f /tmp/node-pkg-manager ]; then
@@ -162,17 +210,14 @@ jobs:
       - core/install_dependencies:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          cache_version: node18_v7
+          cache_version: node18_v8
+          cache_path: ~/project/.orb-pnpm-store
       - run:
-          name: Validate pnpm dependency cache cleanup
+          name: Validate pnpm direct dependency cache
           command: |
-            if [ -d "$HOME/.cache/pipeline-core-orb/dependency-cache" ]; then
-              echo "Expected dependency cache staging root to be removed"
-              exit 1
-            fi
-            PNPM_STORE_DIR=$(pnpm store path)
+            PNPM_STORE_DIR="$HOME/project/.orb-pnpm-store/v$(pnpm --version | cut -d. -f1)"
             if [ ! -d "$PNPM_STORE_DIR" ]; then
-              echo "Expected pnpm store directory to remain after staging cleanup"
+              echo "Expected pnpm direct dependency cache to be populated"
               exit 1
             fi
             if [ -f /tmp/node-pkg-manager ]; then
@@ -214,15 +259,11 @@ jobs:
           pkg_json_dir: ~/project/sample
           cache_version: default_env_v1
       - run:
-          name: Validate default package manager dependency cache cleanup
+          name: Validate default package manager direct dependency cache
           command: |
-            if [ -d "$HOME/.cache/pipeline-core-orb/dependency-cache" ]; then
-              echo "Expected dependency cache staging root to be removed"
-              exit 1
-            fi
-            PNPM_STORE_DIR=$(pnpm store path)
+            PNPM_STORE_DIR="$HOME/.cache/pipeline-core-orb/dependency-cache/v$(pnpm --version | cut -d. -f1)"
             if [ ! -d "$PNPM_STORE_DIR" ]; then
-              echo "Expected pnpm store directory to remain after staging cleanup"
+              echo "Expected pnpm direct dependency cache to be populated"
               exit 1
             fi
             if [ -f /tmp/node-pkg-manager ]; then
@@ -461,14 +502,64 @@ jobs:
             }
 
             TEMP_DIR=$(mktemp -d)
-            trap 'rm -rf "${TEMP_DIR}" /tmp/node-lockfile /tmp/node-pkg-manager' EXIT
+            trap 'rm -rf "${TEMP_DIR}" /tmp/node-cache-path /tmp/node-lockfile /tmp/node-pkg-manager' EXIT
 
             mkdir -p "${TEMP_DIR}/missing-package-json"
             mkdir -p "${TEMP_DIR}/missing-lockfile"
             mkdir -p "${TEMP_DIR}/failing-script"
+            mkdir -p "${TEMP_DIR}/dependency-cache"
+            mkdir -p "${TEMP_DIR}/safe-cache"
+            ln -s "${HOME}" "${TEMP_DIR}/home-cache-link"
 
             printf '{"scripts":{}}\n' > "${TEMP_DIR}/missing-lockfile/package.json"
             printf '{"scripts":{"fail":"exit 42"}}\n' > "${TEMP_DIR}/failing-script/package.json"
+
+            rm -rf "${HOME}/cache-path-alias"
+            rm -f /tmp/node-cache-path
+            assert_status 1 "cache_path must not resolve to the filesystem root or the current user's home directory." \
+              env PARAM_STR_CACHE_PATH="${HOME}/cache-path-alias/.." \
+              bash src/scripts/resolve-dependency-cache-path.sh
+            if [ -f /tmp/node-cache-path ]; then
+              echo "Unsafe home alias must not produce dependency cache metadata"
+              exit 1
+            fi
+
+            assert_status 1 "cache_path must not resolve to the filesystem root or the current user's home directory." \
+              env PARAM_STR_CACHE_PATH=/tmp/../ \
+              bash src/scripts/resolve-dependency-cache-path.sh
+            if [ -f /tmp/node-cache-path ]; then
+              echo "Unsafe root alias must not produce dependency cache metadata"
+              exit 1
+            fi
+
+            assert_status 1 "cache_path must not resolve to the filesystem root or the current user's home directory." \
+              env PARAM_STR_CACHE_PATH="${TEMP_DIR}/home-cache-link" \
+              bash src/scripts/resolve-dependency-cache-path.sh
+            if [ -f /tmp/node-cache-path ]; then
+              echo "Unsafe symbolic-link path must not produce dependency cache metadata"
+              exit 1
+            fi
+
+            SAFE_ABSOLUTE_CACHE_PATH=$(cd "${TEMP_DIR}/safe-cache" && pwd -P)
+            env PARAM_STR_CACHE_PATH="${TEMP_DIR}/safe-cache" \
+              bash src/scripts/resolve-dependency-cache-path.sh
+            if [ "$(cat /tmp/node-cache-path)" != "${SAFE_ABSOLUTE_CACHE_PATH}" ]; then
+              echo "Expected absolute dependency cache path metadata to be canonical"
+              exit 1
+            fi
+            rm -f /tmp/node-cache-path
+
+            SAFE_HOME_CACHE_PATH="$HOME/.cache/pipeline-core-orb-negative-path-cache"
+            env PARAM_STR_CACHE_PATH='~/.cache/pipeline-core-orb-negative-path-cache' \
+              bash src/scripts/resolve-dependency-cache-path.sh
+            SAFE_HOME_CACHE_PATH=$(cd "${SAFE_HOME_CACHE_PATH}" && pwd -P)
+            if [ "$(cat /tmp/node-cache-path)" != "${SAFE_HOME_CACHE_PATH}" ]; then
+              echo "Expected home dependency cache path metadata to be canonical"
+              exit 1
+            fi
+            rm -rf "${SAFE_HOME_CACHE_PATH}" "${HOME}/cache-path-alias"
+            rm -f /tmp/node-cache-path
+            printf '%s\n' "${TEMP_DIR}/dependency-cache" > /tmp/node-cache-path
 
             assert_status 1 "Package manager 'yarn' is not supported" \
               env PARAM_STR_PKG_MANAGER=yarn BASH_ENV="${TEMP_DIR}/bash_env" \
@@ -477,14 +568,6 @@ jobs:
             assert_status 1 "Package manager 'missing-pkg-manager-for-negative-test' is not available" \
               env CURRENT_PKG_MANAGER=missing-pkg-manager-for-negative-test \
               bash src/scripts/validate-pkg-manager.sh
-
-            assert_status 2 "Refusing to remove unsafe pnpm store path: /" \
-              bash -c 'npm() { case "$*" in "root -g") printf "%s\n" "$HOME/.npm-global/lib/node_modules" ;; "dist-tag ls pnpm") printf "latest: 10.5.1\n" ;; "rm -g pnpm") return 0 ;; "i -g pnpm@10.5.1") return 0 ;; *) printf "unexpected npm args: %s\n" "$*" >&2; return 1 ;; esac; }; pnpm() { case "$*" in "--version") printf "9.0.0\n" ;; "store path") printf "/\n" ;; *) return 0 ;; esac; }; sudo() { "$@"; }; CURRENT_PKG_MANAGER=pnpm CURRENT_PKG_MANAGER_VERSION=10.5.1 source "$1"' _ \
-              "${PWD}/src/scripts/ensure-pkg-manager.sh"
-
-            assert_status 2 "Refusing to remove PNPM_HOME path without pnpm marker: /usr/local/cache" \
-              bash -c 'npm() { case "$*" in "root -g") printf "%s\n" "$HOME/.npm-global/lib/node_modules" ;; "dist-tag ls pnpm") printf "latest: 10.5.1\n" ;; "rm -g pnpm") return 0 ;; "i -g pnpm@10.5.1") return 0 ;; *) printf "unexpected npm args: %s\n" "$*" >&2; return 1 ;; esac; }; pnpm() { case "$*" in "--version") printf "9.0.0\n" ;; "store path") printf "%s\n" "$HOME/.pnpm-store-negative-test" ;; *) return 0 ;; esac; }; sudo() { "$@"; }; PNPM_HOME=/usr/local/cache CURRENT_PKG_MANAGER=pnpm CURRENT_PKG_MANAGER_VERSION=10.5.1 source "$1"' _ \
-              "${PWD}/src/scripts/ensure-pkg-manager.sh"
 
             assert_status 1 "Cannot write package manager cache metadata because pnpm version lookup failed" \
               bash -c 'pnpm() { return 1; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
@@ -536,6 +619,8 @@ workflows:
       - ensure-pnpm-latest-compatibility:
           filters: *filters
       - ensure-pnpm-fresh-install:
+          filters: *filters
+      - ensure-pnpm-removes-existing-installation:
           filters: *filters
       - ensure-pnpm-machine-install:
           filters: *filters
@@ -624,6 +709,7 @@ workflows:
             - ensure-pnpm-version
             - ensure-pnpm-latest-compatibility
             - ensure-pnpm-fresh-install
+            - ensure-pnpm-removes-existing-installation
             - ensure-pnpm-machine-install
             - ensure-default-pkg-manager-env
             - install-dependencies-npm-node-18

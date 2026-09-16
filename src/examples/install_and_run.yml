@@ -1,6 +1,9 @@
 description: |
   Ensure a package manager, install dependencies, and run a package.json script in one reusable job.
   Use pre_install_steps and post_install_steps when project-specific setup is needed around dependency installation.
+  The cache_path is the exact npm cache or pnpm store root; it is canonicalized before use and cannot
+  resolve to the filesystem root or current user's home directory. Use distinct paths when a job installs
+  with both managers.
 
 usage:
   version: 2.1
@@ -12,6 +15,7 @@ usage:
         - core/install_and_run:
             pkg_manager: pnpm@10.5.1
             pkg_json_dir: ~/project/app
+            cache_path: ~/project/.pnpm-store
             script: test
             script_args: --coverage
             pre_install_steps:
