@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEST_FILE="/tmp/node-pkg-manager"
+DEST_FILE="/tmp/node-cache-metadata"
 PKG_MANAGER_VERSION_REGEX="^([0-9]+)\.([0-9]+)\.([0-9]+)$"
 PKG_MANAGER_VERSION=""
 
@@ -33,4 +33,4 @@ else
 fi
 
 echo "Writing package manager cache metadata: ${CURRENT_PKG_MANAGER}@${PKG_MANAGER_MAJOR}"
-printf '%s@%s\n' "${CURRENT_PKG_MANAGER}" "${PKG_MANAGER_MAJOR}" >|"${DEST_FILE}"
+printf 'package-manager=%s@%s\n' "${CURRENT_PKG_MANAGER}" "${PKG_MANAGER_MAJOR}" >>"${DEST_FILE}"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEST_FILE="/tmp/node-version"
+DEST_FILE="/tmp/node-cache-metadata"
 NODE_VERSION_REGEX="^v([0-9]+)\.([0-9]+)\.([0-9]+)$"
 NODE_VERSION=$(node -v)
 MAJOR=""
@@ -15,4 +15,4 @@ else
 fi
 
 echo "Writing Node.js major version cache metadata: ${MAJOR}"
-echo "${MAJOR}" >|"${DEST_FILE}"
+printf 'node-major=%s\n' "${MAJOR}" >|"${DEST_FILE}"

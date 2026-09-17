@@ -3,32 +3,18 @@
 REPORTED_CACHE_PATH=""
 
 configure_cache_path() {
-  local expected_cache_path
-
-  if ! expected_cache_path=$(<"/tmp/node-cache-path"); then
-    echo "Cannot read the resolved dependency cache path" >&2
-
-    exit 1
-  fi
-
-  if [[ -z "${expected_cache_path}" ]]; then
-    echo "Resolved dependency cache path is empty" >&2
-
-    exit 1
-  fi
-
-  if ! expected_cache_path=$(cd "${expected_cache_path}" && pwd -P); then
-    echo "Resolved dependency cache path is unusable: ${expected_cache_path}" >&2
+  if [[ -z "${RESOLVED_DEPENDENCY_CACHE_PATH:-}" ]]; then
+    echo "Dependency cache path was not resolved" >&2
 
     exit 1
   fi
 
   if [[ "${CURRENT_PKG_MANAGER}" == "npm" ]]; then
-    export npm_config_cache="${expected_cache_path}"
+    export npm_config_cache="${RESOLVED_DEPENDENCY_CACHE_PATH}"
     REPORTED_CACHE_PATH=$(npm config get cache)
   elif [[ "${CURRENT_PKG_MANAGER}" == "pnpm" ]]; then
-    export npm_config_store_dir="${expected_cache_path}"
-    export pnpm_config_store_dir="${expected_cache_path}"
+    export npm_config_store_dir="${RESOLVED_DEPENDENCY_CACHE_PATH}"
+    export pnpm_config_store_dir="${RESOLVED_DEPENDENCY_CACHE_PATH}"
     REPORTED_CACHE_PATH=$(pnpm store path)
   else
     echo "Cannot install dependencies with unsupported package manager '${CURRENT_PKG_MANAGER}'" >&2
@@ -42,23 +28,23 @@ configure_cache_path() {
     exit 1
   fi
 
-  if [[ "${CURRENT_PKG_MANAGER}" == "npm" && "${REPORTED_CACHE_PATH}" != "${expected_cache_path}" ]]; then
+  if [[ "${CURRENT_PKG_MANAGER}" == "npm" && "${REPORTED_CACHE_PATH}" != "${RESOLVED_DEPENDENCY_CACHE_PATH}" ]]; then
     echo "npm is not using the requested dependency cache path" >&2
-    echo "Expected cache path: ${expected_cache_path}" >&2
+    echo "Expected cache path: ${RESOLVED_DEPENDENCY_CACHE_PATH}" >&2
     echo "Reported cache path: ${REPORTED_CACHE_PATH}" >&2
 
     exit 1
   fi
 
-  if [[ "${CURRENT_PKG_MANAGER}" == "pnpm" && "${REPORTED_CACHE_PATH}" != "${expected_cache_path}"/v[0-9]* ]]; then
+  if [[ "${CURRENT_PKG_MANAGER}" == "pnpm" && "${REPORTED_CACHE_PATH}" != "${RESOLVED_DEPENDENCY_CACHE_PATH}"/v[0-9]* ]]; then
     echo "pnpm is not using the requested dependency cache path" >&2
-    echo "Expected store root: ${expected_cache_path}" >&2
+    echo "Expected store root: ${RESOLVED_DEPENDENCY_CACHE_PATH}" >&2
     echo "Reported store path: ${REPORTED_CACHE_PATH}" >&2
 
     exit 1
   fi
 
-  echo "Using ${CURRENT_PKG_MANAGER} dependency cache path: ${expected_cache_path}"
+  echo "Using ${CURRENT_PKG_MANAGER} dependency cache path: ${RESOLVED_DEPENDENCY_CACHE_PATH}"
 }
 
 configure_cache_path
