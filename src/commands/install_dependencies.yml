@@ -71,28 +71,29 @@ steps:
   - run:
       name: Resolve dependency cache path
       environment:
+        PARAM_ENUM_CACHE_PATH_MODE: initialize
         PARAM_STR_CACHE_PATH: <<parameters.cache_path>>
       command: <<include(scripts/resolve-dependency-cache-path.sh)>>
   - restore_cache:
       keys:
-        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-cache-path" }}-{{ checksum "/tmp/node-lockfile" }}
-        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-cache-path" }}-
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-cache-metadata" }}-{{ checksum "/tmp/node-lockfile" }}
+        - node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-cache-metadata" }}-
   - run:
       name: Install dependencies
       working_directory: <<parameters.pkg_json_dir>>
       environment:
-        PARAM_STR_CACHE_PATH: <<parameters.cache_path>>
         PARAM_STR_INSTALL_COMMAND: <<parameters.install_command>>
       command: <<include(scripts/install-dependencies.sh)>>
   - run:
       name: Revalidate dependency cache path
       environment:
+        PARAM_ENUM_CACHE_PATH_MODE: verify
         PARAM_STR_CACHE_PATH: <<parameters.cache_path>>
       command: <<include(scripts/resolve-dependency-cache-path.sh)>>
   - save_cache:
-      key: node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-version" }}-{{ checksum "/tmp/node-pkg-manager" }}-{{ checksum "/tmp/node-cache-path" }}-{{ checksum "/tmp/node-lockfile" }}
+      key: node-{{ arch }}-<<parameters.cache_version>>-{{ checksum "/tmp/node-cache-metadata" }}-{{ checksum "/tmp/node-lockfile" }}
       paths:
         - <<parameters.cache_path>>
   - run:
       name: Remove temporary dependency metadata
-      command: <<include(scripts/remove-dependency-cache-metadata.sh)>>
+      command: rm -f /tmp/node-cache-metadata /tmp/node-lockfile
