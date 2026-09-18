@@ -446,208 +446,20 @@ jobs:
               infisical --version
               exit 1
             fi
+  cache-contract-validation:
+    executor: core/node
+    steps:
+      - checkout
+      - run:
+          name: Validate dependency cache contract
+          command: bash .circleci/tests/cache-contract-validation.sh
   negative-path-validation:
     executor: core/node
     steps:
       - checkout
       - run:
           name: Validate expected failure paths
-          command: |
-            assert_status() {
-              local expected_status="$1"
-              local expected_output="$2"
-              local output
-              local status
-
-              shift 2
-
-              set +e
-              output=$("$@" 2>&1)
-              status=$?
-              set -e
-
-              if [ "${status}" -ne "${expected_status}" ]; then
-                echo "Expected status ${expected_status}, got ${status}: $*"
-                echo "Output:"
-                printf '%s\n' "${output}"
-                exit 1
-              fi
-
-              if ! printf '%s\n' "${output}" | grep -Fq "${expected_output}"; then
-                echo "Expected output to contain: ${expected_output}"
-                echo "Actual output:"
-                printf '%s\n' "${output}"
-                exit 1
-              fi
-            }
-
-            TEMP_DIR=$(mktemp -d)
-            BASH_ENV_FILE="${TEMP_DIR}/bash_env"
-            trap 'rm -rf "${TEMP_DIR}" /tmp/node-cache-metadata /tmp/node-lockfile' EXIT
-
-            mkdir -p "${TEMP_DIR}/missing-package-json"
-            mkdir -p "${TEMP_DIR}/missing-lockfile"
-            mkdir -p "${TEMP_DIR}/failing-script"
-            mkdir -p "${TEMP_DIR}/cache-project"
-            mkdir -p "${TEMP_DIR}/dependency-cache"
-            mkdir -p "${TEMP_DIR}/other-cache"
-            mkdir -p "${TEMP_DIR}/safe-cache"
-            ln -s "${HOME}" "${TEMP_DIR}/home-cache-link"
-
-            printf '{"scripts":{}}\n' > "${TEMP_DIR}/missing-lockfile/package.json"
-            printf '{"scripts":{"fail":"exit 42"}}\n' > "${TEMP_DIR}/failing-script/package.json"
-            printf '{"lockfileVersion":3}\n' > "${TEMP_DIR}/cache-project/package-lock.json"
-
-            rm -rf "${HOME}/cache-path-alias"
-            rm -f /tmp/node-cache-metadata /tmp/node-lockfile
-            assert_status 1 "cache_path must not resolve to the filesystem root or the current user's home directory." \
-              env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH="${HOME}/cache-path-alias/.." \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            if [ -e /tmp/node-cache-metadata ]; then
-              echo "Unsafe home alias must not produce dependency cache metadata"
-              exit 1
-            fi
-
-            assert_status 1 "cache_path must not resolve to the filesystem root or the current user's home directory." \
-              env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH=/tmp/../ \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            if [ -e /tmp/node-cache-metadata ]; then
-              echo "Unsafe root alias must not produce dependency cache metadata"
-              exit 1
-            fi
-
-            assert_status 1 "cache_path must not resolve to the filesystem root or the current user's home directory." \
-              env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH="${TEMP_DIR}/home-cache-link" \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            if [ -e /tmp/node-cache-metadata ]; then
-              echo "Unsafe symbolic-link path must not produce dependency cache metadata"
-              exit 1
-            fi
-
-            bash src/scripts/write-node-version-cache-metadata.sh
-            CURRENT_PKG_MANAGER=npm bash src/scripts/write-pkg-manager-cache-metadata.sh
-            bash -c 'cd "$1" && CURRENT_PKG_MANAGER=npm bash "$2"' _ \
-              "${TEMP_DIR}/cache-project" \
-              "${PWD}/src/scripts/process-lockfile.sh"
-
-            SAFE_ABSOLUTE_CACHE_PATH=$(cd "${TEMP_DIR}/safe-cache" && pwd -P)
-            : > "${BASH_ENV_FILE}"
-            env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH="${TEMP_DIR}/safe-cache" \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            source "${BASH_ENV_FILE}"
-            if [ "${RESOLVED_DEPENDENCY_CACHE_PATH}" != "${SAFE_ABSOLUTE_CACHE_PATH}" ]; then
-              echo "Expected absolute dependency cache path export to be canonical"
-              exit 1
-            fi
-            NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-            NPM_MAJOR=$(npm --version | cut -d. -f1)
-            EXPECTED_METADATA=$(printf 'node-major=%s\npackage-manager=npm@%s\ncache-path=%s\n' "${NODE_MAJOR}" "${NPM_MAJOR}" "${SAFE_ABSOLUTE_CACHE_PATH}")
-            if [ "$(cat /tmp/node-cache-metadata)" != "${EXPECTED_METADATA}" ]; then
-              echo "Expected merged cache metadata to contain deterministic Node.js, package manager, and cache path records"
-              exit 1
-            fi
-            if [ "$(cat /tmp/node-lockfile)" != "$(cat "${TEMP_DIR}/cache-project/package-lock.json")" ]; then
-              echo "Expected lockfile cache input to remain separate"
-              exit 1
-            fi
-            METADATA_SUM=$(shasum -a 256 /tmp/node-cache-metadata)
-            METADATA_SUM=${METADATA_SUM%% *}
-            env RESOLVED_DEPENDENCY_CACHE_PATH="${RESOLVED_DEPENDENCY_CACHE_PATH}" PARAM_ENUM_CACHE_PATH_MODE=verify PARAM_STR_CACHE_PATH="${TEMP_DIR}/safe-cache" \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            if [ "$(shasum -a 256 /tmp/node-cache-metadata | cut -d' ' -f1)" != "${METADATA_SUM}" ]; then
-              echo "Cache metadata changed during path verification"
-              exit 1
-            fi
-
-            SAFE_HOME_CACHE_PATH="$HOME/.cache/pipeline-core-orb-negative-path-cache"
-            bash src/scripts/write-node-version-cache-metadata.sh
-            CURRENT_PKG_MANAGER=npm bash src/scripts/write-pkg-manager-cache-metadata.sh
-            : > "${BASH_ENV_FILE}"
-            env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH='~/.cache/pipeline-core-orb-negative-path-cache' \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            source "${BASH_ENV_FILE}"
-            SAFE_HOME_CACHE_PATH=$(cd "${SAFE_HOME_CACHE_PATH}" && pwd -P)
-            if [ "${RESOLVED_DEPENDENCY_CACHE_PATH}" != "${SAFE_HOME_CACHE_PATH}" ]; then
-              echo "Expected home dependency cache path export to be canonical"
-              exit 1
-            fi
-
-            rm -f "${TEMP_DIR}/cache-link"
-            ln -s "${TEMP_DIR}/dependency-cache" "${TEMP_DIR}/cache-link"
-            bash src/scripts/write-node-version-cache-metadata.sh
-            CURRENT_PKG_MANAGER=npm bash src/scripts/write-pkg-manager-cache-metadata.sh
-            : > "${BASH_ENV_FILE}"
-            env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH="${TEMP_DIR}/cache-link" \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            source "${BASH_ENV_FILE}"
-            rm "${TEMP_DIR}/cache-link"
-            ln -s "${TEMP_DIR}/other-cache" "${TEMP_DIR}/cache-link"
-            assert_status 1 "Dependency cache path changed after cache restoration" \
-              env RESOLVED_DEPENDENCY_CACHE_PATH="${RESOLVED_DEPENDENCY_CACHE_PATH}" PARAM_ENUM_CACHE_PATH_MODE=verify PARAM_STR_CACHE_PATH="${TEMP_DIR}/cache-link" \
-              bash src/scripts/resolve-dependency-cache-path.sh
-
-            bash src/scripts/write-node-version-cache-metadata.sh
-            CURRENT_PKG_MANAGER=npm bash src/scripts/write-pkg-manager-cache-metadata.sh
-            : > "${BASH_ENV_FILE}"
-            env BASH_ENV="${BASH_ENV_FILE}" PARAM_ENUM_CACHE_PATH_MODE=initialize PARAM_STR_CACHE_PATH="${TEMP_DIR}/other-cache" \
-              bash src/scripts/resolve-dependency-cache-path.sh
-            source "${BASH_ENV_FILE}"
-            if ! grep -Fqx "cache-path=${RESOLVED_DEPENDENCY_CACHE_PATH}" /tmp/node-cache-metadata; then
-              echo "Expected new initialization to replace prior cache metadata"
-              exit 1
-            fi
-            rm -rf "${HOME}/cache-path-alias" "${HOME}/.cache/pipeline-core-orb-negative-path-cache"
-
-            assert_status 1 "Package manager 'yarn' is not supported" \
-              env PARAM_STR_PKG_MANAGER=yarn BASH_ENV="${TEMP_DIR}/bash_env" \
-              bash src/scripts/export-pkg-manager.sh
-
-            assert_status 1 "Package manager 'missing-pkg-manager-for-negative-test' is not available" \
-              env CURRENT_PKG_MANAGER=missing-pkg-manager-for-negative-test \
-              bash src/scripts/validate-pkg-manager.sh
-
-            assert_status 1 "Cannot write package manager cache metadata because pnpm version lookup failed" \
-              bash -c 'pnpm() { return 1; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
-              "${PWD}/src/scripts/write-pkg-manager-cache-metadata.sh"
-
-            assert_status 1 "Cannot parse package manager version: version 10" \
-              bash -c 'pnpm() { printf "version 10\n"; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
-              "${PWD}/src/scripts/write-pkg-manager-cache-metadata.sh"
-
-            assert_status 1 "File package.json not found" \
-              bash -c 'cd "$1" && bash "$2"' _ \
-              "${TEMP_DIR}/missing-package-json" \
-              "${PWD}/src/scripts/check-pkg-json.sh"
-
-            assert_status 1 "The lockfile not found!" \
-              bash -c 'cd "$1" && CURRENT_PKG_MANAGER=npm bash "$2"' _ \
-              "${TEMP_DIR}/missing-lockfile" \
-              "${PWD}/src/scripts/process-lockfile.sh"
-
-            assert_status 1 "At least Node.js v18.20 is required!" \
-              bash -c 'node() { printf "v18.19.0\n"; }; source "$1"' _ \
-              "${PWD}/src/scripts/check-node-version.sh"
-
-            assert_status 1 "Unable to parse Node.js version: version 20" \
-              bash -c 'node() { printf "version 20\n"; }; source "$1"' _ \
-              "${PWD}/src/scripts/check-node-version.sh"
-
-            assert_status 42 "Running package.json script 'fail'" \
-              bash -c 'cd "$1" && CURRENT_PKG_MANAGER=npm PARAM_STR_SCRIPT=fail PARAM_STR_SCRIPT_ARGS= PARAM_STR_RUN_OPTIONS= bash "$2"' _ \
-              "${TEMP_DIR}/failing-script" \
-              "${PWD}/src/scripts/run-script.sh"
-
-            assert_status 1 "Dependency cache path was not resolved" \
-              env -u RESOLVED_DEPENDENCY_CACHE_PATH CURRENT_PKG_MANAGER=npm PARAM_STR_INSTALL_COMMAND='exit 43' \
-              bash src/scripts/install-dependencies.sh
-
-            assert_status 43 "Running custom install command" \
-              env CURRENT_PKG_MANAGER=npm RESOLVED_DEPENDENCY_CACHE_PATH="${TEMP_DIR}/dependency-cache" PARAM_STR_INSTALL_COMMAND='exit 43' \
-              bash src/scripts/install-dependencies.sh
-
-            assert_status 1 "Running custom install command" \
-              env CURRENT_PKG_MANAGER=npm RESOLVED_DEPENDENCY_CACHE_PATH="${TEMP_DIR}/dependency-cache" PARAM_STR_INSTALL_COMMAND='false | true' \
-              bash src/scripts/install-dependencies.sh
+          command: bash .circleci/tests/negative-path-validation.sh
 workflows:
   test-deploy:
     jobs:
@@ -694,6 +506,8 @@ workflows:
       - run-script-pnpm-workspace:
           filters: *filters
       - install-infisical:
+          filters: *filters
+      - cache-contract-validation:
           filters: *filters
       - negative-path-validation:
           filters: *filters
@@ -767,6 +581,7 @@ workflows:
             - run-script-npm-workspace
             - run-script-pnpm-workspace
             - install-infisical
+            - cache-contract-validation
             - negative-path-validation
             - install-and-run-npm
             - install-and-run-pnpm-with-hooks
