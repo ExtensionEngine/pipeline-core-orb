@@ -11,7 +11,7 @@ parameters:
     type: string
     default: lts
     description: >
-      Choose a specific cimg/node image tag for the job executor.
+      Choose a specific cimg/node image tag for the job executor. The selected tag must provide Node.js 22 or newer.
   resource_class:
     type: enum
     enum:

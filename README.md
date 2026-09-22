@@ -10,7 +10,7 @@ Key features:
 - Run scripts defined inside a package.json using a command for better composition
 - Use a streamlined job for common package script workflows
 - Use Docker executor with integrated Infisical for secure secret retrieval
-- Can only run in execution environments with Node.js pre-installed
+- Node-oriented commands require a pre-installed Node.js v22 or newer
 
 ## Usage
 

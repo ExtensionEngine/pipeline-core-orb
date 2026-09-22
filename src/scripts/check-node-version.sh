@@ -18,10 +18,9 @@ if [[ ! "${NODE_VERSION}" =~ ${NODE_VERSION_REGEX} ]]; then
 fi
 
 MAJOR="${BASH_REMATCH[1]}"
-MINOR="${BASH_REMATCH[2]}"
 
-if [[ "${MAJOR}" -lt 18 || ("${MAJOR}" -eq 18 && "${MINOR}" -lt 20) ]]; then
-  echo "At least Node.js v18.20 is required!"
+if [[ "${MAJOR}" -lt 22 ]]; then
+  echo "At least Node.js v22 is required!"
 
   exit 1
 fi

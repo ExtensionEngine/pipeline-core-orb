@@ -165,10 +165,10 @@ jobs:
               exit 1
             fi
 
-  install-dependencies-npm-node-18:
+  install-dependencies-npm-node-22:
     executor:
       name: core/node_secrets
-      tag: "18"
+      tag: "22"
     steps:
       - checkout
       - core/ensure_pkg_manager:
@@ -176,7 +176,7 @@ jobs:
       - core/install_dependencies:
           pkg_manager: npm
           pkg_json_dir: ~/project/sample
-          cache_version: node18_v8
+          cache_version: node22_v2
           cache_path: ~/project/.orb-npm-cache
       - run:
           name: Validate npm direct dependency cache
@@ -191,10 +191,10 @@ jobs:
               exit 1
             fi
       - run: cd ~/project/sample && npm run build
-  install-dependencies-pnpm-node-18:
+  install-dependencies-pnpm-node-22:
     executor:
       name: core/node
-      tag: "18.20"
+      tag: "22.15"
     steps:
       - checkout
       - core/ensure_pkg_manager:
@@ -202,7 +202,59 @@ jobs:
       - core/install_dependencies:
           pkg_manager: pnpm
           pkg_json_dir: ~/project/sample
-          cache_version: node18_v8
+          cache_version: node22_v2
+          cache_path: ~/project/.orb-pnpm-store
+      - run:
+          name: Validate pnpm direct dependency cache
+          command: |
+            PNPM_STORE_DIR="$HOME/project/.orb-pnpm-store/v$(pnpm --version | cut -d. -f1)"
+            if [ ! -d "$PNPM_STORE_DIR" ]; then
+              echo "Expected pnpm direct dependency cache to be populated"
+              exit 1
+            fi
+            if [ -e /tmp/node-cache-metadata ] || [ -e /tmp/node-lockfile ]; then
+              echo "Expected temporary dependency cache files to be removed"
+              exit 1
+            fi
+      - run: cd ~/project/sample && pnpm run build
+  install-dependencies-npm-node-24:
+    executor:
+      name: core/node_secrets
+      tag: "24"
+    steps:
+      - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: npm
+      - core/install_dependencies:
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample
+          cache_version: node24_v4
+          cache_path: ~/project/.orb-npm-cache
+      - run:
+          name: Validate npm direct dependency cache
+          command: |
+            NPM_CACHE_DIR="$HOME/project/.orb-npm-cache"
+            if [ ! -d "$NPM_CACHE_DIR/_cacache" ]; then
+              echo "Expected npm direct dependency cache to be populated"
+              exit 1
+            fi
+            if [ -e /tmp/node-cache-metadata ] || [ -e /tmp/node-lockfile ]; then
+              echo "Expected temporary dependency cache files to be removed"
+              exit 1
+            fi
+      - run: cd ~/project/sample && npm run build
+  install-dependencies-pnpm-node-24:
+    executor:
+      name: core/node
+      tag: "24.11"
+    steps:
+      - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: pnpm@10.5.1
+      - core/install_dependencies:
+          pkg_manager: pnpm
+          pkg_json_dir: ~/project/sample
+          cache_version: node24_v4
           cache_path: ~/project/.orb-pnpm-store
       - run:
           name: Validate pnpm direct dependency cache
@@ -479,9 +531,13 @@ workflows:
           filters: *filters
       - ensure-default-pkg-manager-env:
           filters: *filters
-      - install-dependencies-npm-node-18:
+      - install-dependencies-npm-node-22:
           filters: *filters
-      - install-dependencies-pnpm-node-18:
+      - install-dependencies-pnpm-node-22:
+          filters: *filters
+      - install-dependencies-npm-node-24:
+          filters: *filters
+      - install-dependencies-pnpm-node-24:
           filters: *filters
       - install-dependencies-custom-command:
           filters: *filters
@@ -567,8 +623,10 @@ workflows:
             - ensure-pnpm-removes-existing-installation
             - ensure-pnpm-machine-install
             - ensure-default-pkg-manager-env
-            - install-dependencies-npm-node-18
-            - install-dependencies-pnpm-node-18
+            - install-dependencies-npm-node-22
+            - install-dependencies-pnpm-node-22
+            - install-dependencies-npm-node-24
+            - install-dependencies-pnpm-node-24
             - install-dependencies-custom-command
             - install-dependencies-default-pkg-manager-env
             - install-dependencies-preinstalled-npm
