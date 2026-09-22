@@ -1,6 +1,7 @@
 description: |
   Install the Infisical CLI on Linux or macOS (Darwin) platforms using either amd64 or arm64 architecture.
-  Omit version to use the latest release, or pin a semantic version, with or without a leading v, for reproducible builds.
+  Omit version to resolve the latest release, or pin a semantic version, with or without a leading v, for reproducible builds.
+  The command fails unless the requested version is available on PATH after installation.
 
 usage:
   version: 2.1

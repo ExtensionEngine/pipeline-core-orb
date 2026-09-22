@@ -1,14 +1,15 @@
 description: >
-  Install Infisical CLI (https://github.com/Infisical/cli) a powerful command-line tool
-  for secret management, optionally selecting the specific version.
+  Install the Infisical CLI (https://github.com/Infisical/cli), a command-line tool for
+  secret management. The command resolves the requested version and fails unless that
+  version is available on PATH after installation.
 
 parameters:
   version:
     type: string
     default: ""
     description: >
-      Choose the specific version of Infisical CLI from https://github.com/Infisical/cli/releases.
-      By default, the latest version if picked.
+      Choose a specific Infisical CLI semantic version from https://github.com/Infisical/cli/releases.
+      Provided versions may include a leading v. By default, the latest version is picked.
 
 steps:
   - run:
