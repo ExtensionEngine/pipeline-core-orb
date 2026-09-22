@@ -1,7 +1,7 @@
 description: >
   Run scripts defined within package.json using an already available package manager.
   Supports package manager specific run options, including npm and pnpm workspace selectors.
-  Requires execution environment with Node.js >= 18.20 pre-installed.
+  Requires execution environment with Node.js >= 22 pre-installed.
 
 parameters:
   pkg_manager:

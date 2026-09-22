@@ -1,6 +1,6 @@
 description: >
   Ensure the requested package manager is installed and configured, optionally specifying the exact version.
-  Requires execution environment with Node.js >= 18.20 pre-installed.
+  Requires execution environment with Node.js >= 22 pre-installed.
 
 parameters:
   pkg_manager:

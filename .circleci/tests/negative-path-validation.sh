@@ -101,8 +101,20 @@ prepare_fixtures() {
 test_node_validation() {
   # This command is evaluated by the child Bash process.
   # shellcheck disable=SC2016
-  assert_fails "At least Node.js v18.20 is required!" \
-    bash -c 'node() { printf "v18.19.0\\n"; }; source "$1"' _ \
+  assert_fails "At least Node.js v22 is required!" \
+    bash -c 'node() { printf "v21.99.99\\n"; }; source "$1"' _ \
+    "${SCRIPTS_DIR}/check-node-version.sh"
+
+  # This command is evaluated by the child Bash process.
+  # shellcheck disable=SC2016
+  assert_status 0 "Detected Node.js version: v22.0.0" \
+    bash -c 'node() { printf "v22.0.0\\n"; }; source "$1"' _ \
+    "${SCRIPTS_DIR}/check-node-version.sh"
+
+  # This command is evaluated by the child Bash process.
+  # shellcheck disable=SC2016
+  assert_status 0 "Detected Node.js version: v24.0.0" \
+    bash -c 'node() { printf "v24.0.0\\n"; }; source "$1"' _ \
     "${SCRIPTS_DIR}/check-node-version.sh"
 
   # This command is evaluated by the child Bash process.
