@@ -38,10 +38,22 @@ check_installation() {
 }
 
 resolve_partial_version() {
-  npm view "$1@$2" version --json | awk '
-    match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { version = substr($0, RSTART, RLENGTH) }
-    END { if (version) print version; else exit 1 }
-  '
+  local resolved_version
+
+  resolved_version=$(npm view "$1@$2" version --json | awk '
+    {
+      while (match($0, /"[0-9]+\.[0-9]+\.[0-9]+"/)) {
+        version = substr($0, RSTART + 1, RLENGTH - 2)
+        $0 = substr($0, RSTART + RLENGTH)
+      }
+    }
+    END {
+      if (version) print version
+      else exit 1
+    }
+  ') || return 1
+
+  printf '%s' "${resolved_version}"
 }
 
 resolve_required_version() {
@@ -58,17 +70,15 @@ resolve_required_version() {
     return 0
   fi
 
-  resolved_version=$(npm dist-tag ls "${pkg_manager}" | awk -v tag="${version_spec}" '$1 == tag ":" { print $2; found = 1 } END { exit found ? 0 : 1 }')
-
-  if [[ -n "${resolved_version}" ]]; then
-    echo "Resolved ${pkg_manager} dist-tag '${version_spec}' to ${resolved_version}" >&2
+  if [[ "${version_spec}" =~ ^[0-9]+(\.[0-9]+)?$ ]] && resolved_version=$(resolve_partial_version "${pkg_manager}" "${version_spec}"); then
+    echo "Resolved ${pkg_manager} version '${version_spec}' to ${resolved_version}" >&2
     printf '%s' "${resolved_version}"
 
     return 0
   fi
 
-  if [[ "${version_spec}" =~ ^[0-9]+(\.[0-9]+)?$ ]] && resolved_version=$(resolve_partial_version "${pkg_manager}" "${version_spec}"); then
-    echo "Resolved ${pkg_manager} version '${version_spec}' to ${resolved_version}" >&2
+  if resolved_version=$(npm dist-tag ls "${pkg_manager}" | awk -v tag="${version_spec}" '$1 == tag ":" { print $2; exit }') && [[ "${resolved_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Resolved ${pkg_manager} dist-tag '${version_spec}' to ${resolved_version}" >&2
     printf '%s' "${resolved_version}"
 
     return 0
@@ -177,9 +187,11 @@ if [[ "${NAME}" == "pnpm" ]]; then
   fi
 
   if [[ -z "${VERSION}" ]]; then
-    VERSION=$(npm view pnpm version)
-    REQUIRED_VERSION="${VERSION}"
+    if ! REQUIRED_VERSION=$(resolve_required_version "${NAME}" latest); then
+      exit 2
+    fi
 
+    VERSION="${REQUIRED_VERSION}"
     echo "Version not explicitly requested, opting for ${VERSION}"
   fi
 

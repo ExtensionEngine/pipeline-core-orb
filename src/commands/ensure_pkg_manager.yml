@@ -9,6 +9,7 @@ parameters:
     description: |
       Choose Node.js package manager to ensure. Supports npm and pnpm.
       The package manager must follow the format <name>[@<version|tag>].
+      Supported specifiers are stable exact versions, numeric partial versions, and npm registry dist-tags.
       When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
       Omitting the version/tag implies
       (for npm) use the version that comes with the target Node.js environment,

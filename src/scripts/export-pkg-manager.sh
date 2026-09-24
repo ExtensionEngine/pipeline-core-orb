@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PKG_MANAGER_REF="${PARAM_STR_PKG_MANAGER:-${DEFAULT_PKG_MANAGER}}"
-PKG_MANAGER_REGEX="^(npm|pnpm)(@(([0-9]+\.?){0,2}[0-9]+|[a-z]+-?([0-9]+)?))?$"
+PKG_MANAGER_REGEX='^(npm|pnpm)(@([0-9]+(\.[0-9]+){0,2}|[A-Za-z][0-9A-Za-z._-]*))?$'
 NAME=""
 VERSION=""
 
