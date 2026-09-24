@@ -191,6 +191,61 @@ jobs:
               exit 1
             fi
       - run: cd ~/project/sample && npm run build
+  install-dependencies-npm-warm-cache-seed:
+    executor:
+      name: core/node_secrets
+      tag: "22"
+    steps:
+      - checkout
+      - core/ensure_pkg_manager:
+          pkg_manager: npm
+      - core/install_dependencies:
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample
+          cache_version: warm-cache-v1-<< pipeline.number >>
+          cache_path: ~/project/.orb-npm-warm-cache
+          install_command: |
+            npm ci
+            printf '%s\n' '<< pipeline.id >>' > "${npm_config_cache}/.orb-warm-cache-sentinel"
+      - run:
+          name: Validate warm-cache seed sentinel
+          command: |
+            SENTINEL_PATH="$HOME/project/.orb-npm-warm-cache/.orb-warm-cache-sentinel"
+            if [ ! -f "${SENTINEL_PATH}" ] || [ "$(cat "${SENTINEL_PATH}")" != "<< pipeline.id >>" ]; then
+              echo "Expected the npm warm-cache seed sentinel for this pipeline"
+              exit 1
+            fi
+  install-dependencies-npm-warm-cache-restore:
+    executor:
+      name: core/node_secrets
+      tag: "22"
+    steps:
+      - checkout
+      - run:
+          name: Clear npm warm-cache restore inputs
+          command: |
+            rm -rf ~/project/.orb-npm-warm-cache ~/project/sample/node_modules
+            if [ -e ~/project/.orb-npm-warm-cache/.orb-warm-cache-sentinel ]; then
+              echo "Expected the npm warm cache to be absent before restoration"
+              exit 1
+            fi
+      - core/ensure_pkg_manager:
+          pkg_manager: npm
+      - core/install_dependencies:
+          pkg_manager: npm
+          pkg_json_dir: ~/project/sample
+          cache_version: warm-cache-v1-<< pipeline.number >>
+          cache_path: ~/project/.orb-npm-warm-cache
+          install_command: npm ci --offline
+      - run:
+          name: Validate restored npm warm cache
+          command: |
+            SENTINEL_PATH="$HOME/project/.orb-npm-warm-cache/.orb-warm-cache-sentinel"
+            if [ ! -f "${SENTINEL_PATH}" ] || [ "$(cat "${SENTINEL_PATH}")" != "<< pipeline.id >>" ]; then
+              echo "Expected the npm warm cache restored from this pipeline's seed job"
+              exit 1
+            fi
+      - run: cd ~/project/sample && npm run build
   install-dependencies-pnpm-node-22:
     executor:
       name: core/node
@@ -533,6 +588,12 @@ workflows:
           filters: *filters
       - install-dependencies-npm-node-22:
           filters: *filters
+      - install-dependencies-npm-warm-cache-seed:
+          filters: *filters
+      - install-dependencies-npm-warm-cache-restore:
+          requires:
+            - install-dependencies-npm-warm-cache-seed
+          filters: *filters
       - install-dependencies-pnpm-node-22:
           filters: *filters
       - install-dependencies-npm-node-24:
@@ -624,6 +685,7 @@ workflows:
             - ensure-pnpm-machine-install
             - ensure-default-pkg-manager-env
             - install-dependencies-npm-node-22
+            - install-dependencies-npm-warm-cache-restore
             - install-dependencies-pnpm-node-22
             - install-dependencies-npm-node-24
             - install-dependencies-pnpm-node-24
