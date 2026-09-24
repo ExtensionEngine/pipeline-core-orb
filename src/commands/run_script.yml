@@ -10,6 +10,7 @@ parameters:
     description: |
       Choose Node.js package manager to use. Supports npm and pnpm.
       The package manager may follow the format <name>[@<version|tag>], but script execution uses only the name.
+      When specified, accepted versions/tags are stable exact versions, numeric partial versions, or npm registry dist-tags.
       When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
       This command does not install dependencies; use install_dependencies before this command when needed.
   pkg_json_dir:

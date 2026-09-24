@@ -24,6 +24,7 @@ parameters:
     description: |
       Choose Node.js package manager to ensure and use. Supports npm and pnpm.
       The package manager may follow the format <name>[@<version|tag>].
+      Accepted versions/tags are stable exact versions, numeric partial versions, or npm registry dist-tags.
       When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
   pkg_json_dir:
     type: string

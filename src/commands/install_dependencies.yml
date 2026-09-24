@@ -9,6 +9,7 @@ parameters:
     description: |
       Choose Node.js package manager to use. Supports npm and pnpm.
       The package manager may follow the format <name>[@<version|tag>], but install execution uses only the name.
+      When specified, accepted versions/tags are stable exact versions, numeric partial versions, or npm registry dist-tags.
       When omitted, the DEFAULT_PKG_MANAGER environment variable is used at runtime.
       Dependency cache restore/save behavior is based on the resolved package manager name and major version.
       This command does not install or update package managers; use ensure_pkg_manager before this command when needed.

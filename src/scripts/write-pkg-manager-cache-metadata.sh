@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DEST_FILE="/tmp/node-cache-metadata"
-PKG_MANAGER_VERSION_REGEX="^([0-9]+)\.([0-9]+)\.([0-9]+)$"
+PKG_MANAGER_VERSION_REGEX='^([0-9]+)\.([0-9]+)\.([0-9]+)$'
 PKG_MANAGER_VERSION=""
 
 if [[ -z "${CURRENT_PKG_MANAGER}" ]]; then

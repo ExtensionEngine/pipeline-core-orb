@@ -125,9 +125,23 @@ test_node_validation() {
 }
 
 test_package_manager_validation() {
+  local reference
+
   assert_fails "Package manager 'yarn' is not supported" \
     env PARAM_STR_PKG_MANAGER=yarn BASH_ENV="${BASH_ENV_FILE}" \
     bash "${SCRIPTS_DIR}/export-pkg-manager.sh"
+
+  for reference in npm@ 'npm@next tag' 'npm@10.0.0@rc.1' 'npm@^11' 'npm@file:./npm' 'npm@https://example.test/npm.tgz' 'npm@11.0.0-rc.1' 'npm@11.0.0+build.1'; do
+    assert_fails "Package manager '${reference}' is not supported" \
+      env PARAM_STR_PKG_MANAGER="${reference}" BASH_ENV="${BASH_ENV_FILE}" \
+      bash "${SCRIPTS_DIR}/export-pkg-manager.sh"
+  done
+
+  for reference in pnpm@latest-10 npm@candidate_1.0; do
+    : >"${BASH_ENV_FILE}"
+    env PARAM_STR_PKG_MANAGER="${reference}" BASH_ENV="${BASH_ENV_FILE}" \
+      bash "${SCRIPTS_DIR}/export-pkg-manager.sh" >/dev/null
+  done
 
   assert_fails "Package manager 'missing-pkg-manager-for-negative-test' is not available" \
     env CURRENT_PKG_MANAGER=missing-pkg-manager-for-negative-test \
@@ -154,6 +168,12 @@ test_cache_metadata_failures() {
   # shellcheck disable=SC2016
   assert_fails "Cannot parse package manager version: version 10" \
     bash -c 'pnpm() { printf "version 10\\n"; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
+    "${SCRIPTS_DIR}/write-pkg-manager-cache-metadata.sh"
+
+  # This command is evaluated by the child Bash process.
+  # shellcheck disable=SC2016
+  assert_status 0 "Writing package manager cache metadata: pnpm@10" \
+    bash -c 'pnpm() { printf "10.5.1\\n"; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
     "${SCRIPTS_DIR}/write-pkg-manager-cache-metadata.sh"
 }
 
