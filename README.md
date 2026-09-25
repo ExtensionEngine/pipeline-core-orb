@@ -9,7 +9,7 @@ Key features:
 - Install dependencies with caching enabled by default
 - Run scripts defined inside a package.json using a command for better composition
 - Use a streamlined job for common package script workflows
-- Use Docker executor with integrated Infisical for secure secret retrieval
+- Use the Infisical-integrated `node_secrets` executor or install the Infisical CLI with a command
 - Node-oriented commands require a pre-installed Node.js v22 or newer
 
 ## Usage
