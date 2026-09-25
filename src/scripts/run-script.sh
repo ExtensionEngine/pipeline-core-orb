@@ -40,11 +40,4 @@ else
   exit 1
 fi
 
-echo 'Executing:'
-
-set -x
-"${CMD[@]}"
-EXIT_STATUS=$?
-set +x
-
-exit "${EXIT_STATUS}"
+exec "${CMD[@]}"
