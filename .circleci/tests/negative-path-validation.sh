@@ -303,6 +303,52 @@ test_cache_path_safety() {
     bash "${SCRIPTS_DIR}/resolve-dependency-cache-path.sh"
 }
 
+test_run_script_non_disclosure() {
+  local fake_bin="${TEMP_DIR}/run-script-bin"
+  local arguments_file="${TEMP_DIR}/run-script-arguments"
+  local script_argument="script-argument-secret-sentinel"
+  local run_option="run-option-secret-sentinel"
+  local output status actual_arguments expected_arguments
+
+  mkdir -p "${fake_bin}"
+  {
+    printf '%s\n' '#!/bin/bash'
+    # These expressions are evaluated by the generated fake npm executable.
+    # shellcheck disable=SC2016
+    printf '%s\n' 'printf '\''%s\n'\'' "$@" >"${RUN_SCRIPT_ARGUMENTS_FILE}"'
+    # shellcheck disable=SC2016
+    printf '%s\n' 'exit "${RUN_SCRIPT_EXIT_STATUS}"'
+  } >"${fake_bin}/npm"
+  chmod +x "${fake_bin}/npm"
+
+  if output=$(env \
+    PATH="${fake_bin}:${PATH}" \
+    CURRENT_PKG_MANAGER=npm \
+    PARAM_STR_SCRIPT=non-disclosure-test \
+    PARAM_STR_SCRIPT_ARGS="${script_argument}" \
+    PARAM_STR_RUN_OPTIONS="${run_option}" \
+    RUN_SCRIPT_ARGUMENTS_FILE="${arguments_file}" \
+    RUN_SCRIPT_EXIT_STATUS=44 \
+    bash "${SCRIPTS_DIR}/run-script.sh" 2>&1); then
+    status=0
+  else
+    status=$?
+  fi
+
+  [[ "${status}" -eq 44 ]] || fail "Expected run script status 44, got ${status}" "${output}"
+  [[ "${output}" == *"Running package.json script 'non-disclosure-test'"* ]] ||
+    fail "Expected run script diagnostic" "${output}"
+
+  if [[ "${output}" == *"${script_argument}"* || "${output}" == *"${run_option}"* ]]; then
+    fail "run_script must not log script arguments or run options" "${output}"
+  fi
+
+  actual_arguments=$(<"${arguments_file}")
+  expected_arguments=$(printf '%s\n' run non-disclosure-test "${run_option}" -- "${script_argument}")
+  [[ "${actual_arguments}" == "${expected_arguments}" ]] ||
+    fail "run_script did not forward arguments in npm order" "${actual_arguments}"
+}
+
 test_status_propagation() {
   assert_status 42 "Running package.json script 'fail'" \
     in_dir "${TEMP_DIR}/failing-script" \
@@ -339,6 +385,7 @@ main() {
   test_project_validation
   test_cache_metadata_failures
   test_cache_path_safety
+  test_run_script_non_disclosure
   test_status_propagation
 }
 

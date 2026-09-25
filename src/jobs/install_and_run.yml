@@ -35,9 +35,11 @@ parameters:
   install_command:
     type: string
     default: ""
-    description: >
+    description: |
       Custom command to install dependencies. Useful when default commands,
       "npm ci" or "pnpm i --frozen-lockfile", are unsuitable.
+      Do not include literal secrets in this parameter. Reference CircleCI context or project
+      environment variables from the custom command.
   cache_version:
     type: string
     default: "v1"
@@ -70,18 +72,22 @@ parameters:
   script_args:
     type: string
     default: ""
-    description: >
+    description: |
       Arguments passed to the package.json script. For npm, arguments are passed after an
       automatically inserted -- separator. For pnpm, arguments are passed directly after
       the script name; include -- explicitly when the script itself needs that separator.
-      Values are split on whitespace into command arguments.
+      Values are split on whitespace into command arguments. Do not pass secrets through this parameter.
+      If the package.json script requires secrets, configure them as CircleCI context or project
+      environment variables and read them from the script's environment.
   run_options:
     type: string
     default: ""
-    description: >
+    description: |
       Package manager specific options for the run command, including workspace selectors.
       For npm these options are placed after the script name. For pnpm these options are placed before run.
-      Values are split on whitespace into command arguments.
+      Values are split on whitespace into command arguments. Do not pass secrets through this parameter.
+      If the package.json script requires secrets, configure them as CircleCI context or project
+      environment variables and read them from the script's environment.
   no_output_timeout:
     type: string
     default: "10m"
