@@ -148,6 +148,92 @@ test_package_manager_validation() {
     bash "${SCRIPTS_DIR}/validate-pkg-manager.sh"
 }
 
+test_pnpm_cleanup_guardrails() {
+  local operations_file="${TEMP_DIR}/pnpm-cleanup.log"
+  local safe_store="${TEMP_DIR}/pnpm-store"
+  local unrelated_path="${TEMP_DIR}/unrelated-cache"
+
+  mkdir -p "${TEST_HOME}/npm-root"
+
+  run_pnpm_cleanup_case() {
+    # This command is evaluated by the child Bash process.
+    # shellcheck disable=SC2016
+    env \
+      HOME="${TEST_HOME}" \
+      PNPM_HOME="$2" \
+      PNPM_CLEANUP_STORE="$1" \
+      PNPM_CLEANUP_LOG="${operations_file}" \
+      CURRENT_PKG_MANAGER=pnpm \
+      CURRENT_PKG_MANAGER_VERSION=10.5.1 \
+      bash -c '
+        npm() {
+          if [[ "$*" == "root -g" ]]; then
+            printf "%s\\n" "$HOME/npm-root"
+          else
+            printf "npm %s\\n" "$*" >>"$PNPM_CLEANUP_LOG"
+          fi
+        }
+
+        pnpm() {
+          case "$*" in
+          --version) printf "9.0.0\\n" ;;
+          "store path") printf "%s\\n" "$PNPM_CLEANUP_STORE" ;;
+          esac
+        }
+
+        sudo() {
+          "$@"
+        }
+
+        rm() {
+          printf "rm %s\\n" "$*" >>"$PNPM_CLEANUP_LOG"
+        }
+
+        source "$1"
+      ' _ "${SCRIPTS_DIR}/ensure-pkg-manager.sh"
+  }
+
+  assert_pnpm_cleanup_rejection() {
+    local store_path=$1
+    local pnpm_home=$2
+    local expected_output=$3
+    local expected_operations=$4
+    local actual_operations
+
+    : >"${operations_file}"
+    assert_status 2 "${expected_output}" run_pnpm_cleanup_case "${store_path}" "${pnpm_home}"
+    actual_operations=$(<"${operations_file}")
+
+    if [[ "${actual_operations}" != "${expected_operations}" ]]; then
+      fail "Unexpected pnpm cleanup operations; expected: ${expected_operations:-<none>}" "${actual_operations:-<none>}"
+    fi
+  }
+
+  assert_pnpm_cleanup_rejection \
+    / \
+    "${TEMP_DIR}/pnpm-home" \
+    "Refusing to remove unsafe pnpm store path: /" \
+    ""
+
+  assert_pnpm_cleanup_rejection \
+    "${unrelated_path}" \
+    "${TEMP_DIR}/pnpm-home" \
+    "Refusing to remove pnpm store path without pnpm marker: ${unrelated_path}" \
+    ""
+
+  assert_pnpm_cleanup_rejection \
+    "${safe_store}" \
+    "${TEST_HOME}" \
+    "Refusing to remove unsafe PNPM_HOME path: ${TEST_HOME}" \
+    "rm -rf ${safe_store}"
+
+  assert_pnpm_cleanup_rejection \
+    "${safe_store}" \
+    "${unrelated_path}" \
+    "Refusing to remove PNPM_HOME path without pnpm marker: ${unrelated_path}" \
+    "rm -rf ${safe_store}"
+}
+
 test_project_validation() {
   assert_fails "File package.json not found" \
     in_dir "${TEMP_DIR}" bash "${SCRIPTS_DIR}/check-pkg-json.sh"
@@ -249,6 +335,7 @@ main() {
   prepare_fixtures
   test_node_validation
   test_package_manager_validation
+  test_pnpm_cleanup_guardrails
   test_project_validation
   test_cache_metadata_failures
   test_cache_path_safety
