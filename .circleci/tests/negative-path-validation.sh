@@ -349,6 +349,98 @@ test_run_script_non_disclosure() {
     fail "run_script did not forward arguments in npm order" "${actual_arguments}"
 }
 
+test_infisical_archive_verification() {
+  local fake_bin="${TEMP_DIR}/infisical-bin"
+  local install_marker="${TEMP_DIR}/infisical-install.log"
+  local version=0.43.119
+  local linux_archive="cli_${version}_linux_amd64.tar.gz"
+  local darwin_archive="cli_${version}_darwin_arm64.tar.gz"
+
+  mkdir -p "${fake_bin}"
+
+  cat >"${fake_bin}/fake-command" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+command_name=${0##*/}
+case "${command_name}" in
+uname)
+  case "$1" in -s) printf '%s\n' "${INFISICAL_FAKE_PLATFORM}" ;; -m) printf '%s\n' "${INFISICAL_FAKE_ARCHITECTURE}" ;; *) exit 1 ;; esac
+  ;;
+curl)
+  [[ $# -eq 7 && "$5" == -o ]] || exit 1
+  output=$6 url=$7
+  if [[ "${url}" == */cli_*.tar.gz ]]; then
+    printf 'archive\n' >"${output}"
+  elif [[ "${url##*/}" == "${INFISICAL_EXPECTED_MANIFEST}" ]]; then
+    printf '%b\n' "${INFISICAL_MANIFEST}" >"${output}"
+  else
+    printf 'Unexpected Infisical URL: %s\n' "${url}" >&2
+    exit 1
+  fi
+  ;;
+sha256sum | shasum)
+  [[ "${command_name} $*" == "${INFISICAL_EXPECTED_CHECKSUM_COMMAND}" ]] || exit 1
+  read -r checksum archive <"${!#}"
+  [[ "${checksum}" == valid && -n "${archive}" && -f "${archive}" ]]
+  ;;
+tar)
+  printf '%s\n' tar >>"${INFISICAL_INSTALL_MARKER}"
+  printf '#!/bin/bash\nprintf '\''v%s\\n'\''\n' "${INFISICAL_VERSION}" >"$4/infisical"
+  chmod +x "$4/infisical"
+  ;;
+sudo)
+  printf '%s\n' sudo >>"${INFISICAL_INSTALL_MARKER}"
+  cp "$4" "${INFISICAL_FAKE_BIN}/infisical"
+  chmod +x "${INFISICAL_FAKE_BIN}/infisical"
+  ;;
+*) exit 1 ;;
+esac
+EOF
+
+  chmod +x "${fake_bin}/fake-command"
+  local command_name
+
+  for command_name in uname curl sha256sum shasum tar sudo; do
+    ln -s fake-command "${fake_bin}/${command_name}"
+  done
+
+  run_infisical_case() {
+    local platform=$1 architecture=$2 expected_manifest=$3 expected_checksum=$4 manifest=$5
+    rm -f "${fake_bin}/infisical"
+    : >"${install_marker}"
+    env PATH="${fake_bin}:/usr/bin:/bin" \
+      PARAM_STR_VERSION="${version}" \
+      INFISICAL_VERSION="${version}" \
+      INFISICAL_FAKE_PLATFORM="${platform}" \
+      INFISICAL_FAKE_ARCHITECTURE="${architecture}" \
+      INFISICAL_FAKE_BIN="${fake_bin}" \
+      INFISICAL_EXPECTED_MANIFEST="${expected_manifest}" \
+      INFISICAL_EXPECTED_CHECKSUM_COMMAND="${expected_checksum}" \
+      INFISICAL_MANIFEST="${manifest}" \
+      INFISICAL_INSTALL_MARKER="${install_marker}" \
+      bash "${SCRIPTS_DIR}/install-infisical.sh"
+  }
+
+  assert_verification_rejected() {
+    local manifest=$1 expected_output=$2
+    assert_fails "${expected_output}" run_infisical_case \
+      Linux x86_64 checksums.txt "sha256sum -c selected-checksum" "${manifest}"
+    [[ ! -s "${install_marker}" ]] ||
+      fail "Infisical verification failure must stop before extraction or installation" "$(<"${install_marker}")"
+  }
+
+  assert_status 0 "Installed and verified Infisical CLI ${version}" run_infisical_case \
+    Linux x86_64 checksums.txt "sha256sum -c selected-checksum" "valid ${linux_archive}"
+  assert_status 0 "Installed and verified Infisical CLI ${version}" run_infisical_case \
+    Darwin arm64 checksums-darwin.txt "shasum -a 256 -c selected-checksum" "valid ${darwin_archive}"
+  assert_verification_rejected \
+    'valid other.tar.gz' "Unable to find a unique checksum for ${linux_archive}"
+  assert_verification_rejected \
+    "valid ${linux_archive}\nvalid ${linux_archive}" "Unable to find a unique checksum for ${linux_archive}"
+  assert_verification_rejected \
+    "invalid ${linux_archive}" "Infisical CLI checksum verification failed"
+}
+
 test_status_propagation() {
   assert_status 42 "Running package.json script 'fail'" \
     in_dir "${TEMP_DIR}/failing-script" \
@@ -386,6 +478,7 @@ main() {
   test_cache_metadata_failures
   test_cache_path_safety
   test_run_script_non_disclosure
+  test_infisical_archive_verification
   test_status_propagation
 }
 

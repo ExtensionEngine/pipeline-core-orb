@@ -63,6 +63,37 @@ detect_release_target() {
   printf '%s_%s\n' "${platform}" "${architecture}"
 }
 
+download_verified_archive() {
+  local version=$1
+  local archive_name=$2
+  local release_target=$3
+  local temp_dir=$4
+  local checksum_file=checksums.txt
+
+  if [[ "${release_target}" == darwin_* ]]; then
+    checksum_file=checksums-darwin.txt
+  fi
+
+  curl -fsSL --retry 2 --retry-all-errors \
+    -o "${temp_dir}/${archive_name}" \
+    "${INFISICAL_RELEASES_URL}/download/v${version}/${archive_name}" ||
+    fail "Unable to download Infisical CLI release asset: ${archive_name}"
+  curl -fsSL --retry 2 --retry-all-errors \
+    -o "${temp_dir}/${checksum_file}" \
+    "${INFISICAL_RELEASES_URL}/download/v${version}/${checksum_file}" ||
+    fail "Unable to download Infisical CLI checksums"
+
+  awk -v archive="${archive_name}" '$2 == archive' "${temp_dir}/${checksum_file}" >"${temp_dir}/selected-checksum"
+
+  [[ $(wc -l <"${temp_dir}/selected-checksum") -eq 1 ]] || fail "Unable to find a unique checksum for ${archive_name}"
+
+  if [[ "${release_target}" == darwin_* ]]; then
+    (cd "${temp_dir}" && shasum -a 256 -c selected-checksum)
+  else
+    (cd "${temp_dir}" && sha256sum -c selected-checksum)
+  fi || fail "Infisical CLI checksum verification failed"
+}
+
 validate_selected_command() {
   local expected_version=$1
   local executable
@@ -79,16 +110,15 @@ validate_selected_command() {
 install_infisical() (
   local version=$1
   local archive_name
+  local release_target
   local temp_dir
 
-  archive_name="cli_${version}_$(detect_release_target).tar.gz"
+  release_target=$(detect_release_target)
+  archive_name="cli_${version}_${release_target}.tar.gz"
   temp_dir=$(mktemp -d) || fail "Unable to create a temporary directory for Infisical CLI installation"
   trap 'rm -rf -- "${temp_dir}"' EXIT
 
-  curl -fsSL --retry 2 --retry-all-errors \
-    -o "${temp_dir}/${archive_name}" \
-    "${INFISICAL_RELEASES_URL}/download/v${version}/${archive_name}" ||
-    fail "Unable to download Infisical CLI release asset: ${archive_name}"
+  download_verified_archive "${version}" "${archive_name}" "${release_target}" "${temp_dir}"
 
   tar -xzf "${temp_dir}/${archive_name}" -C "${temp_dir}" infisical ||
     fail "Unable to extract Infisical CLI executable from ${archive_name}"

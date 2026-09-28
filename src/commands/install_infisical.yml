@@ -1,7 +1,8 @@
 description: >
   Install the Infisical CLI (https://github.com/Infisical/cli), a command-line tool for
-  secret management. The command resolves the requested version and fails unless that
-  version is available on PATH after installation.
+  secret management. The command verifies the selected release archive against its
+  published SHA-256 checksum and fails unless the requested version is available on PATH
+  after installation.
 
 parameters:
   version:
