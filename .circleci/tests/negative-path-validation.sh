@@ -148,6 +148,84 @@ test_package_manager_validation() {
     bash "${SCRIPTS_DIR}/validate-pkg-manager.sh"
 }
 
+test_package_manager_dist_tag_resolution() {
+  local fake_bin="${TEMP_DIR}/package-manager-bin"
+  local version_file="${fake_bin}/version"
+  local malformed_version
+
+  mkdir -p "${fake_bin}" "${TEST_HOME}/npm-root"
+
+  cat >"${fake_bin}/fake-package-manager" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+case "$*" in
+"root -g")
+  printf '%s\n' "${HOME}/npm-root"
+  ;;
+"dist-tag ls "*)
+  printf '%b' "${TEST_DIST_TAG_OUTPUT}"
+  ;;
+"i -g "*)
+  expected_ref="${CURRENT_PKG_MANAGER}@${CURRENT_PKG_MANAGER_VERSION}"
+  if [[ "$3" != "${expected_ref}" ]]; then
+    printf 'Expected install reference %s, got %s\n' "${expected_ref}" "$3" >&2
+    exit 1
+  fi
+  package_name=${3%%@*}
+  printf '%s\n' "${TEST_INSTALL_VERSION}" >"${TEST_VERSION_FILE}"
+  ln -sf fake-package-manager "${TEST_FAKE_BIN}/${package_name}"
+  ;;
+--version)
+  cat "${TEST_VERSION_FILE}"
+  ;;
+*)
+  printf 'Unexpected invocation: %s %s\n' "${0##*/}" "$*" >&2
+  exit 1
+  ;;
+esac
+EOF
+
+  chmod +x "${fake_bin}/fake-package-manager"
+  ln -s fake-package-manager "${fake_bin}/npm"
+
+  run_dist_tag_case() {
+    local manager=$1 tag=$2 registry_output=$3 installed_version=${4:-}
+
+    rm -f "${fake_bin}/pnpm"
+    printf '10.0.0\n' >"${version_file}"
+
+    env PATH="${fake_bin}:/usr/bin:/bin" \
+      HOME="${TEST_HOME}" \
+      CURRENT_PKG_MANAGER="${manager}" \
+      CURRENT_PKG_MANAGER_VERSION="${tag}" \
+      TEST_DIST_TAG_OUTPUT="${registry_output}" \
+      TEST_FAKE_BIN="${fake_bin}" \
+      TEST_INSTALL_VERSION="${installed_version}" \
+      TEST_VERSION_FILE="${version_file}" \
+      bash "${SCRIPTS_DIR}/ensure-pkg-manager.sh"
+  }
+
+  assert_status 0 "Installed npm version: 11.0.0-beta.2" run_dist_tag_case \
+    npm next $'latest: 10.9.0\nnext: 11.0.0-beta.2\n' 11.0.0-beta.2
+  assert_status 0 "Installed pnpm version: 11.0.0-rc.1+build.5" run_dist_tag_case \
+    pnpm beta $'beta: 11.0.0-rc.1+build.5\nlatest: 10.5.1\n' 11.0.0-rc.1+build.5
+  assert_status 0 "Installed npm version: 11.0.0" run_dist_tag_case \
+    npm latest $'latest: 11.0.0\nnext: 12.0.0-beta.1\n' 11.0.0
+
+  for malformed_version in 11.0 11.0.0- 11.0.0+; do
+    assert_status 2 "Failed to resolve npm version/tag 'next'" run_dist_tag_case \
+      npm next "next: ${malformed_version}\n"
+  done
+
+  assert_status 2 "Failed to resolve pnpm version/tag 'beta'" run_dist_tag_case \
+    pnpm beta $'latest: 10.5.1\n'
+  assert_status 2 "Failed to resolve npm version/tag 'next'" run_dist_tag_case \
+    npm next $'next: 11.0.0-beta.1\nnext: 11.0.0-beta.2\n'
+  assert_status 2 "Failed to install npm version: 11.0.0-beta.2" run_dist_tag_case \
+    npm next $'next: 11.0.0-beta.2\n' 11.0.0-beta.3
+}
+
 test_pnpm_cleanup_guardrails() {
   local operations_file="${TEMP_DIR}/pnpm-cleanup.log"
   local safe_store="${TEMP_DIR}/pnpm-store"
@@ -244,23 +322,37 @@ test_project_validation() {
 }
 
 test_cache_metadata_failures() {
+  run_cache_metadata_case() {
+    local manager=$1 version=$2
+
+    rm -f "${METADATA_FILE}"
+    # This command is evaluated by the child Bash process.
+    # shellcheck disable=SC2016
+    env TEST_PKG_MANAGER_VERSION="${version}" bash -c '
+      package_manager_version() { printf "%s\\n" "${TEST_PKG_MANAGER_VERSION}"; }
+      npm() { package_manager_version; }
+      pnpm() { package_manager_version; }
+      CURRENT_PKG_MANAGER="$2" source "$1"
+    ' _ "${SCRIPTS_DIR}/write-pkg-manager-cache-metadata.sh" "${manager}"
+  }
+
   # This command is evaluated by the child Bash process.
   # shellcheck disable=SC2016
   assert_fails "Cannot write package manager cache metadata because pnpm version lookup failed" \
     bash -c 'pnpm() { return 1; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
     "${SCRIPTS_DIR}/write-pkg-manager-cache-metadata.sh"
 
-  # This command is evaluated by the child Bash process.
-  # shellcheck disable=SC2016
-  assert_fails "Cannot parse package manager version: version 10" \
-    bash -c 'pnpm() { printf "version 10\\n"; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
-    "${SCRIPTS_DIR}/write-pkg-manager-cache-metadata.sh"
+  run_cache_metadata_case pnpm 10.5.1 >/dev/null
+  [[ "$(<"${METADATA_FILE}")" == "package-manager=pnpm@10" ]] ||
+    fail "Expected stable pnpm cache metadata to use its major version" "$(<"${METADATA_FILE}")"
 
-  # This command is evaluated by the child Bash process.
-  # shellcheck disable=SC2016
-  assert_status 0 "Writing package manager cache metadata: pnpm@10" \
-    bash -c 'pnpm() { printf "10.5.1\\n"; }; CURRENT_PKG_MANAGER=pnpm source "$1"' _ \
-    "${SCRIPTS_DIR}/write-pkg-manager-cache-metadata.sh"
+  run_cache_metadata_case pnpm 10.5.1-rc.1+build.2 >/dev/null
+  [[ "$(<"${METADATA_FILE}")" == "package-manager=pnpm@10" ]] ||
+    fail "Expected prerelease pnpm cache metadata to use its major version" "$(<"${METADATA_FILE}")"
+
+  run_cache_metadata_case npm 11.0.0-beta.2 >/dev/null
+  [[ "$(<"${METADATA_FILE}")" == "package-manager=npm@11" ]] ||
+    fail "Expected prerelease npm cache metadata to use its major version" "$(<"${METADATA_FILE}")"
 }
 
 test_cache_path_safety() {
@@ -473,6 +565,7 @@ main() {
   prepare_fixtures
   test_node_validation
   test_package_manager_validation
+  test_package_manager_dist_tag_resolution
   test_pnpm_cleanup_guardrails
   test_project_validation
   test_cache_metadata_failures
