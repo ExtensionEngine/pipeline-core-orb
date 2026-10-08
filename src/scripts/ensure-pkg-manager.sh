@@ -37,6 +37,14 @@ check_installation() {
   fi
 }
 
+is_complete_version() {
+  local core='[0-9]+\.[0-9]+\.[0-9]+'
+  local identifiers='[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*'
+  local version_regex="^${core}(-${identifiers})?(\+${identifiers})?$"
+
+  [[ "$1" =~ ${version_regex} ]]
+}
+
 resolve_partial_version() {
   local resolved_version
 
@@ -77,7 +85,16 @@ resolve_required_version() {
     return 0
   fi
 
-  if resolved_version=$(npm dist-tag ls "${pkg_manager}" | awk -v tag="${version_spec}" '$1 == tag ":" { print $2; exit }') && [[ "${resolved_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  if resolved_version=$(npm dist-tag ls "${pkg_manager}" | awk -v tag="${version_spec}" '
+    $1 == tag ":" {
+      value = $2
+      found++
+    }
+    END {
+      if (found == 1) print value
+      else exit 1
+    }
+  ') && is_complete_version "${resolved_version}"; then
     echo "Resolved ${pkg_manager} dist-tag '${version_spec}' to ${resolved_version}" >&2
     printf '%s' "${resolved_version}"
 
